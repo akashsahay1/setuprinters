@@ -77,15 +77,22 @@ a.text-primary, .text-primary {
     color: var(--theme-primary) !important;
 }
 
-/* Custom radio group (payroll report) */
-.custom-radio-group .btn-outline-primary {
-    color: var(--theme-primary);
-    border-color: #dee2e6;
+/* btn-outline-primary override */
+.btn-outline-primary,
+.btn-check + .btn-outline-primary {
+    color: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    background-color: transparent !important;
 }
-.custom-radio-group .btn-check:checked + .btn-outline-primary {
-    background-color: var(--theme-primary);
-    border-color: var(--theme-primary);
-    color: #fff;
+.btn-outline-primary:hover,
+.btn-outline-primary:active,
+.btn-outline-primary.active,
+.btn-check + .btn-outline-primary:hover,
+.btn-check:checked + .btn-outline-primary,
+.btn-check:active + .btn-outline-primary {
+    background-color: var(--theme-primary) !important;
+    border-color: var(--theme-primary) !important;
+    color: #fff !important;
 }
 
 /* ============================================

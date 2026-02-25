@@ -37,6 +37,15 @@
                         <h5 class="card-title mb-0">Payroll Report</h5>
                     </div>
                     <div class="card-body">
+                        <!-- View Toggle -->
+                        <div class="d-flex align-items-center gap-2 mb-3">
+                            <input type="radio" class="btn-check" name="prViewMode" id="prViewMonthly" value="monthly" checked autocomplete="off">
+                            <label class="btn btn-outline-primary btn-sm" for="prViewMonthly">Monthly (All Staff)</label>
+                            <input type="radio" class="btn-check" name="prViewMode" id="prViewYearly" value="yearly" autocomplete="off">
+                            <label class="btn btn-outline-primary btn-sm" for="prViewYearly">Yearly (Single Staff)</label>
+                        </div>
+
+                        <!-- Monthly View Form -->
                         <form id="hrmsPrForm" method="POST" action="javascript:void(0);">
                             <div class="row g-2 mb-3">
                                 <div class="col-md-2">
@@ -62,7 +71,32 @@
                                 </div>
                             </div>
                         </form>
-                        <div class="table-responsive">
+
+                        <!-- Yearly View Form (hidden by default) -->
+                        <form id="hrmsPrYearlyForm" method="POST" action="javascript:void(0);" style="display:none;">
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0">Financial Year</label>
+                                    <select class="form-select form-control form-select-sm" id="hrmsPrFy"></select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label mb-0">Staff</label>
+                                    <select class="form-select form-control form-select-sm" id="hrmsPrStaff">
+                                        <option value="">-- Select Staff --</option>
+                                        @foreach($staffList as $s)
+                                        <option value="{{ $s->id }}">{{ $s->full_name }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-end gap-2">
+                                    <button type="submit" class="btn btn-primary" id="hrmsPrYearlyGenerate">Generate</button>
+                                    <button type="button" class="btn btn-success" id="hrmsPrYearlyCsv" style="display:none;">CSV</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Monthly Table -->
+                        <div class="table-responsive" id="hrmsPrMonthlyTableWrap">
                             <table class="table table-bordered table-sm" id="hrmsPrTable" style="font-size:0.85rem;width:100%;">
                                 <thead class="table-light">
                                     <tr class="text-nowrap">
@@ -78,6 +112,32 @@
                                 </thead>
                                 <tbody id="hrmsPrBody">
                                 </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Yearly Table (hidden by default) -->
+                        <div class="table-responsive" id="hrmsPrYearlyTableWrap" style="display:none;">
+                            <table class="table table-bordered table-sm" id="hrmsPrYearlyTable" style="font-size:0.85rem;width:100%;">
+                                <thead class="table-light">
+                                    <tr class="text-nowrap">
+                                        <th>Month</th>
+                                        <th class="text-center">Basic</th>
+                                        <th class="text-center">1 Day Sal</th>
+                                        <th class="text-center">Absent</th>
+                                        <th class="text-center">Absent Ded</th>
+                                        <th class="text-center">OT Days</th>
+                                        <th class="text-center">OT Amount</th>
+                                        <th class="text-center">Advance</th>
+                                        <th class="text-center">PF</th>
+                                        <th class="text-center">Final Pay</th>
+                                        <th class="text-center">Paid Bank</th>
+                                        <th class="text-center">Paid Cash</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hrmsPrYearlyBody">
+                                </tbody>
+                                <tfoot class="table-light fw-bold" id="hrmsPrYearlyFoot" style="display:none;">
+                                </tfoot>
                             </table>
                         </div>
                     </div>
@@ -400,6 +460,238 @@ jQuery(function(){
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'payroll_'+prMonth+'_'+prYear+'.csv';
+        a.click();
+    });
+
+    // ──────────────────────────────────────
+    // VIEW MODE TOGGLE
+    // ──────────────────────────────────────
+    jQuery('input[name="prViewMode"]').on('change', function(){
+        var mode = jQuery(this).val();
+        if(mode === 'monthly'){
+            jQuery('#hrmsPrForm').show();
+            jQuery('#hrmsPrYearlyForm').hide();
+            jQuery('#hrmsPrMonthlyTableWrap').show();
+            jQuery('#hrmsPrYearlyTableWrap').hide();
+        } else {
+            jQuery('#hrmsPrForm').hide();
+            jQuery('#hrmsPrYearlyForm').show();
+            jQuery('#hrmsPrMonthlyTableWrap').hide();
+            jQuery('#hrmsPrYearlyTableWrap').show();
+            jQuery('#hrmsPrSave').hide();
+            jQuery('#hrmsPrCsv').hide();
+        }
+    });
+
+    // ──────────────────────────────────────
+    // YEARLY (SINGLE STAFF) VIEW
+    // ──────────────────────────────────────
+    var FY_MONTHS = [
+        {month: 4, label: 'April'},
+        {month: 5, label: 'May'},
+        {month: 6, label: 'June'},
+        {month: 7, label: 'July'},
+        {month: 8, label: 'August'},
+        {month: 9, label: 'September'},
+        {month: 10, label: 'October'},
+        {month: 11, label: 'November'},
+        {month: 12, label: 'December'},
+        {month: 1, label: 'January'},
+        {month: 2, label: 'February'},
+        {month: 3, label: 'March'}
+    ];
+
+    // Build FY dropdown options
+    (function buildFyOptions(){
+        var now = new Date();
+        var y = now.getFullYear();
+        var currentStart = now.getMonth() >= 3 ? y : y - 1;
+        var html = '';
+        for(var i = currentStart - 1; i <= currentStart + 1; i++){
+            var fy = i + '-' + (i + 1);
+            var sel = (i === currentStart) ? ' selected' : '';
+            html += '<option value="' + fy + '"' + sel + '>FY ' + fy + '</option>';
+        }
+        jQuery('#hrmsPrFy').html(html);
+    })();
+
+    var yearlyData = [];
+    var yearlyStaffName = '';
+
+    // Yearly form submit
+    jQuery('#hrmsPrYearlyForm').on('submit', function(e){
+        e.preventDefault();
+        var staffId = jQuery('#hrmsPrStaff').val();
+        var fy = jQuery('#hrmsPrFy').val();
+
+        if(!staffId){
+            Swal.fire('Error', 'Please select a staff member', 'warning');
+            return;
+        }
+
+        var btn = jQuery('#hrmsPrYearlyGenerate');
+        btn.prop('disabled', true).text('Loading...');
+
+        jQuery.ajax({
+            url: AJAX,
+            type: 'POST',
+            data: { _token: CSRF, fetch_yearly_payroll: 1, staff_id: staffId, fy: fy },
+            success: function(res){
+                btn.prop('disabled', false).text('Generate');
+                if(!res.status){
+                    Swal.fire('Error', res.message || 'Failed to fetch data', 'error');
+                    return;
+                }
+                renderYearlyReport(res, fy);
+            },
+            error: function(){
+                btn.prop('disabled', false).text('Generate');
+                Swal.fire('Error', 'Network error', 'error');
+            }
+        });
+    });
+
+    function renderYearlyReport(res, fy){
+        var staff = res.staff;
+        var records = res.records || [];
+        var parts = fy.split('-');
+        var startYear = parseInt(parts[0]);
+        var endYear = parseInt(parts[1]);
+
+        yearlyStaffName = staff.full_name || '';
+
+        // Index records by "month-year" key
+        var recordMap = {};
+        records.forEach(function(r){
+            recordMap[r.month + '-' + r.year] = r;
+        });
+
+        yearlyData = [];
+        var html = '';
+        var totals = { basic:0, absent:0, absentDed:0, otDays:0, otAmount:0, advance:0, pf:0, finalPay:0, paidBank:0, paidCash:0 };
+        var dash = '<span class="text-muted">--</span>';
+
+        FY_MONTHS.forEach(function(fm){
+            var yr = fm.month >= 4 ? startYear : endYear;
+            var key = fm.month + '-' + yr;
+            var rec = recordMap[key] || null;
+
+            var row = {
+                monthLabel: fm.label + ' ' + yr,
+                basic: rec ? parseFloat(rec.basic_amount) : 0,
+                dailySal: rec ? parseFloat(rec.one_day_salary) : 0,
+                absent: rec ? parseFloat(rec.days_absent) : 0,
+                absentDed: rec ? parseFloat(rec.absent_deduction) : 0,
+                otDays: rec ? parseInt(rec.days_overtime) : 0,
+                otAmount: rec ? parseFloat(rec.overtime_amount) : 0,
+                advance: rec ? parseFloat(rec.advance_amount) : 0,
+                pf: rec ? parseFloat(rec.paid_pf) : 0,
+                finalPay: rec ? parseFloat(rec.final_pay) : 0,
+                paidBank: rec ? parseFloat(rec.paid_in_bank) : 0,
+                paidCash: rec ? parseFloat(rec.paid_cash) : 0,
+                hasData: !!rec
+            };
+            yearlyData.push(row);
+
+            if(rec){
+                totals.basic += row.basic;
+                totals.absent += row.absent;
+                totals.absentDed += row.absentDed;
+                totals.otDays += row.otDays;
+                totals.otAmount += row.otAmount;
+                totals.advance += row.advance;
+                totals.pf += row.pf;
+                totals.finalPay += row.finalPay;
+                totals.paidBank += row.paidBank;
+                totals.paidCash += row.paidCash;
+            }
+
+            html += '<tr' + (rec ? '' : ' class="text-muted"') + '>';
+            html += '<td>' + row.monthLabel + '</td>';
+            if(rec){
+                html += '<td class="text-center">' + row.basic.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.dailySal.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.absent + '</td>';
+                html += '<td class="text-center">' + row.absentDed.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.otDays + '</td>';
+                html += '<td class="text-center">' + row.otAmount.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.advance.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.pf.toFixed(2) + '</td>';
+                html += '<td class="text-center fw-bold">' + row.finalPay.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.paidBank.toFixed(2) + '</td>';
+                html += '<td class="text-center">' + row.paidCash.toFixed(2) + '</td>';
+            } else {
+                for(var c = 0; c < 11; c++) html += '<td class="text-center">' + dash + '</td>';
+            }
+            html += '</tr>';
+        });
+
+        if(!html) html = '<tr><td colspan="12" class="text-center text-muted">No data</td></tr>';
+        jQuery('#hrmsPrYearlyBody').html(html);
+
+        // Totals footer
+        var foot = '<tr>';
+        foot += '<td>TOTAL</td>';
+        foot += '<td class="text-center">' + r2(totals.basic).toFixed(2) + '</td>';
+        foot += '<td class="text-center">--</td>';
+        foot += '<td class="text-center">' + r2(totals.absent) + '</td>';
+        foot += '<td class="text-center">' + r2(totals.absentDed).toFixed(2) + '</td>';
+        foot += '<td class="text-center">' + totals.otDays + '</td>';
+        foot += '<td class="text-center">' + r2(totals.otAmount).toFixed(2) + '</td>';
+        foot += '<td class="text-center">' + r2(totals.advance).toFixed(2) + '</td>';
+        foot += '<td class="text-center">' + r2(totals.pf).toFixed(2) + '</td>';
+        foot += '<td class="text-center fw-bold">' + r2(totals.finalPay).toFixed(2) + '</td>';
+        foot += '<td class="text-center">' + r2(totals.paidBank).toFixed(2) + '</td>';
+        foot += '<td class="text-center">' + r2(totals.paidCash).toFixed(2) + '</td>';
+        foot += '</tr>';
+        jQuery('#hrmsPrYearlyFoot').html(foot).show();
+
+        jQuery('#hrmsPrYearlyCsv').show();
+    }
+
+    // Yearly CSV Export
+    jQuery('#hrmsPrYearlyCsv').on('click', function(){
+        if(!yearlyData.length) return;
+        var fy = jQuery('#hrmsPrFy').val();
+        var csv = 'Yearly Payroll Report - ' + yearlyStaffName + ' - FY ' + fy + '\n';
+        csv += 'Month,Basic,1 Day Salary,Days Absent,Absent Ded,OT Days,OT Amount,Advance,PF,Final Pay,Paid Bank,Paid Cash\n';
+
+        var totals = { basic:0, absent:0, absentDed:0, otDays:0, otAmount:0, advance:0, pf:0, finalPay:0, paidBank:0, paidCash:0 };
+
+        yearlyData.forEach(function(r){
+            if(r.hasData){
+                csv += '"' + r.monthLabel + '",';
+                csv += r.basic.toFixed(2) + ',' + r.dailySal.toFixed(2) + ',';
+                csv += r.absent + ',' + r.absentDed.toFixed(2) + ',';
+                csv += r.otDays + ',' + r.otAmount.toFixed(2) + ',';
+                csv += r.advance.toFixed(2) + ',' + r.pf.toFixed(2) + ',';
+                csv += r.finalPay.toFixed(2) + ',' + r.paidBank.toFixed(2) + ',';
+                csv += r.paidCash.toFixed(2) + '\n';
+
+                totals.basic += r.basic;
+                totals.absent += r.absent;
+                totals.absentDed += r.absentDed;
+                totals.otDays += r.otDays;
+                totals.otAmount += r.otAmount;
+                totals.advance += r.advance;
+                totals.pf += r.pf;
+                totals.finalPay += r.finalPay;
+                totals.paidBank += r.paidBank;
+                totals.paidCash += r.paidCash;
+            } else {
+                csv += '"' + r.monthLabel + '",,,,,,,,,,,\n';
+            }
+        });
+
+        csv += 'TOTAL,' + r2(totals.basic).toFixed(2) + ',--,' + r2(totals.absent) + ',';
+        csv += r2(totals.absentDed).toFixed(2) + ',' + totals.otDays + ',' + r2(totals.otAmount).toFixed(2) + ',';
+        csv += r2(totals.advance).toFixed(2) + ',' + r2(totals.pf).toFixed(2) + ',' + r2(totals.finalPay).toFixed(2) + ',';
+        csv += r2(totals.paidBank).toFixed(2) + ',' + r2(totals.paidCash).toFixed(2) + '\n';
+
+        var blob = new Blob([csv], {type: 'text/csv'});
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'payroll_yearly_' + yearlyStaffName.replace(/\s+/g, '_') + '_FY' + fy + '.csv';
         a.click();
     });
 

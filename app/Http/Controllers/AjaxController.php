@@ -825,6 +825,148 @@ class AjaxController extends Controller
             }
         }
 
+        if($request->has('fetch_yearly_payroll')){
+            try {
+                $staffId   = (int) $request->input('staff_id');
+                $fy        = $request->input('fy'); // e.g. "2025-2026"
+                $parts     = explode('-', $fy);
+
+                if (count($parts) !== 2) {
+                    return response()->json(['status' => false, 'message' => 'Invalid FY format']);
+                }
+
+                $startYear = (int) $parts[0];
+                $endYear   = (int) $parts[1];
+
+                $staff = Staff::active()->with('group')->find($staffId);
+                if (!$staff) {
+                    return response()->json(['status' => false, 'message' => 'Staff not found']);
+                }
+
+                $workingDays = 26;
+                $basicSalary = (float) $staff->basic_salary;
+                $oneDaySalary = $workingDays > 0 ? round($basicSalary / $workingDays, 2) : 0;
+                $pfEnabled = (bool) $staff->pf_enabled;
+                $pfPct = (float) ($staff->pf_percentage ?? 0);
+
+                // FY months: Apr(startYear) to Mar(endYear)
+                $fyMonths = [];
+                for ($m = 4; $m <= 12; $m++) $fyMonths[] = ['month' => $m, 'year' => $startYear];
+                for ($m = 1; $m <= 3; $m++)  $fyMonths[] = ['month' => $m, 'year' => $endYear];
+
+                // Full FY date range for attendance query
+                $fyStart = sprintf('%04d-04-01', $startYear);
+                $fyEnd   = sprintf('%04d-03-31', $endYear);
+
+                // Aggregated attendance per month
+                $attendance = DailyAttendance::active()
+                    ->where('staff_id', $staffId)
+                    ->whereBetween('date', [$fyStart, $fyEnd])
+                    ->select(
+                        DB::raw("MONTH(date) as m"),
+                        DB::raw("YEAR(date) as y"),
+                        DB::raw("SUM(CASE WHEN status = 'absent' THEN 1 WHEN status = 'half_day' THEN 0.5 WHEN status = 'leave' AND base_wage = 0 THEN 1 ELSE 0 END) as days_absent"),
+                        DB::raw("SUM(CASE WHEN ot_hours > 0 THEN 1 ELSE 0 END) as days_overtime"),
+                        DB::raw("SUM(ot_wage) as total_ot")
+                    )
+                    ->groupBy(DB::raw("YEAR(date)"), DB::raw("MONTH(date)"))
+                    ->get()
+                    ->keyBy(function ($item) {
+                        return $item->m . '-' . $item->y;
+                    });
+
+                // Saved payroll records (for advance, paid_cash)
+                $saved = PayrollRecord::active()
+                    ->where('staff_id', $staffId)
+                    ->where(function ($q) use ($startYear, $endYear) {
+                        $q->where(function ($q2) use ($startYear) {
+                            $q2->where('year', $startYear)->where('month', '>=', 4);
+                        })->orWhere(function ($q2) use ($endYear) {
+                            $q2->where('year', $endYear)->where('month', '<=', 3);
+                        });
+                    })
+                    ->get()
+                    ->keyBy(function ($item) {
+                        return $item->month . '-' . $item->year;
+                    });
+
+                // Build monthly records
+                // Priority: saved payroll record > live computation from attendance
+                $records = [];
+                foreach ($fyMonths as $fm) {
+                    $key = $fm['month'] . '-' . $fm['year'];
+                    $att = $attendance->get($key);
+                    $prev = $saved->get($key);
+
+                    if (!$att && !$prev) {
+                        continue; // no data for this month
+                    }
+
+                    // If saved record exists, use it as-is (historical snapshot)
+                    if ($prev) {
+                        $records[] = [
+                            'month'            => $fm['month'],
+                            'year'             => $fm['year'],
+                            'basic_amount'     => (float) $prev->basic_amount,
+                            'one_day_salary'   => (float) $prev->one_day_salary,
+                            'days_in_month'    => (int) $prev->days_in_month,
+                            'days_absent'      => (float) $prev->days_absent,
+                            'absent_deduction' => (float) $prev->absent_deduction,
+                            'days_overtime'    => (int) $prev->days_overtime,
+                            'overtime_amount'  => (float) $prev->overtime_amount,
+                            'advance_amount'   => (float) $prev->advance_amount,
+                            'paid_pf'          => (float) $prev->paid_pf,
+                            'final_pay'        => (float) $prev->final_pay,
+                            'paid_in_bank'     => (float) $prev->paid_in_bank,
+                            'paid_cash'        => (float) $prev->paid_cash,
+                            'saved'            => true,
+                        ];
+                        continue;
+                    }
+
+                    // Otherwise compute live from attendance
+                    $daysAbsent = (float) $att->days_absent;
+                    $absentDed = round($daysAbsent * $oneDaySalary, 2);
+                    $daysOt = (int) $att->days_overtime;
+                    $otAmount = round((float) $att->total_ot, 2);
+                    $paidPf = $pfEnabled ? round($basicSalary * $pfPct / 100, 2) : 0;
+                    $finalPay = round($basicSalary - $absentDed + $otAmount - $paidPf, 2);
+                    $paidBank = round($finalPay, 2);
+                    $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $fm['month'], $fm['year']);
+
+                    $records[] = [
+                        'month'            => $fm['month'],
+                        'year'             => $fm['year'],
+                        'basic_amount'     => $basicSalary,
+                        'one_day_salary'   => $oneDaySalary,
+                        'days_in_month'    => $daysInMonth,
+                        'days_absent'      => $daysAbsent,
+                        'absent_deduction' => $absentDed,
+                        'days_overtime'    => $daysOt,
+                        'overtime_amount'  => $otAmount,
+                        'advance_amount'   => 0,
+                        'paid_pf'          => $paidPf,
+                        'final_pay'        => $finalPay,
+                        'paid_in_bank'     => $paidBank,
+                        'paid_cash'        => 0,
+                        'saved'            => false,
+                    ];
+                }
+
+                return response()->json([
+                    'status'  => true,
+                    'staff'   => $staff,
+                    'records' => $records,
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch yearly payroll',
+                    'error'   => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
         if($request->has('save_settings')){
             try {
                 if (!DB::getSchemaBuilder()->hasTable('settings')) {

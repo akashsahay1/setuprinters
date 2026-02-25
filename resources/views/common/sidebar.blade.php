@@ -71,7 +71,7 @@
 						</a>
 					</li>
 					<li class="sidebar-list">
-						<a class="sidebar-link sidebar-title" href="{{ url('PayrollReport') }}">
+						<a class="sidebar-link sidebar-title" href="{{ url('payroll-report') }}">
 							<svg class="stroke-icon">
 								<use href="{{ url('assets/svg/icon-sprite.svg#stroke-price') }}"></use>
 							</svg>
@@ -82,7 +82,7 @@
 						</a>
 					</li>
 					<li class="sidebar-list">
-						<a class="sidebar-link sidebar-title" href="{{ url('LeaveManagement') }}">
+						<a class="sidebar-link sidebar-title" href="{{ url('leave-management') }}">
 							<svg class="stroke-icon">
 								<use href="{{ url('assets/svg/icon-sprite.svg#stroke-to-do') }}"></use>
 							</svg>
