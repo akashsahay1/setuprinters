@@ -1,68 +1,132 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# SetupPrinters HRMS
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A Human Resource Management System built for **Setu Printers** to manage staff attendance, payroll, leaves, and holidays.
 
-## Project Development Guidelines
+## Tech Stack
 
-1. For any AJAX operation, use `AjaxController.php` (`app/Http/Controllers/AjaxController.php`).
-2. For saving data, do not use API routes. Instead, use `AjaxController.php` — the same way user login is handled in `login.blade.php`.
-3. Use `public/style.css` to save all CSS. Do not write CSS inline or in view (Blade) files.
-4. Do not use API routes to fetch/get data in any of the view files either. Use `AjaxController.php` or pass data from `PageController.php`.
+- **Backend**: Laravel 12 (PHP 8.2+)
+- **Database**: MySQL
+- **Frontend**: Blade templates, jQuery, Bootstrap 5 ([Cuba Admin](https://admin.pixelstrap.com/cuba/) template)
+- **Mobile Integration**: REST API for scan-based attendance
 
----
+## Features
 
-## About Laravel
+### Staff Management
+- Create, edit, and manage staff profiles with personal info, bank details, and profile photos
+- Organize staff into groups/departments
+- Configurable wage calculation (fixed daily or hour-based) with overtime settings
+- PF percentage per staff
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Attendance Tracking
+- QR code / barcode-based OFFICE IN and OFFICE OUT scanning via mobile app
+- Real-time attendance processing on OFFICE OUT scan (`POST /api/scan`)
+- Daily attendance records with automatic status detection (present, half-day, absent, holiday, leave)
+- Nightly cron job to mark absent staff (`attendance:mark-absent`)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### Payroll Report
+- Monthly payroll generation from daily attendance data
+- Expandable table rows — key columns visible, details available on click (+/- toggle)
+- Editable advance and cash fields with live recalculation
+- Save payroll records and export to CSV
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Leave Management
+- Staff leave applications with approval/rejection workflow
+- Leave types: casual, sick, earned, unpaid
+- Bulk approve/reject with SweetAlert2 confirmations
+- Auto-updates daily attendance when leaves are approved
 
-## Learning Laravel
+### Holidays
+- Financial year-based holiday management (India: April-March)
+- FY dropdown filter on holidays page
+- Inline edit and delete with password confirmation
+- Yearly recurring holidays support
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Settings
+- Data cleanup: permanently purge all data for a past financial year (holidays, attendance, scans, leaves, payroll)
+- Change password
+- Download mobile APK
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Project Structure
 
-## Laravel Sponsors
+```
+app/
+  Http/
+    Controllers/
+      PageController.php      # Page routes and view data
+      AjaxController.php      # All AJAX operations (single /ajax endpoint)
+      ScanApiController.php   # Mobile app scan API
+    Middleware/
+      VerifyScanApiToken.php  # Bearer token auth for scan API
+  Models/
+    Staff.php, StaffGroup.php, Holiday.php, DailyAttendance.php,
+    PayrollRecord.php, LeaveApplication.php, ScannedBarcode.php
+  Console/Commands/
+    ProcessAttendanceCommand.php   # Bulk attendance processing
+    MarkAbsentCommand.php          # Nightly absent marking
+resources/views/
+  pages/         # All page views (dashboard, staffs, payroll-report, etc.)
+  common/        # Shared partials (header, footer, sidebar)
+routes/
+  web.php        # Web routes
+  api.php        # API routes (scan, user list)
+  console.php    # Scheduled commands
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Setup
 
-### Premium Partners
+```bash
+# Clone
+git clone https://github.com/akashsahay1/setuprinters.git
+cd setuprinters
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# Install dependencies
+composer install
 
-## Contributing
+# Environment
+cp .env.example .env
+php artisan key:generate
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# Configure .env
+# DB_CONNECTION=mysql
+# DB_DATABASE=setuprintersDB
+# SCAN_API_TOKEN=<your-token>
 
-## Code of Conduct
+# Run migrations
+php artisan migrate
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+# Serve
+php artisan serve
+```
 
-## Security Vulnerabilities
+## Development Guidelines
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. All AJAX operations go through `AjaxController.php` via `POST /ajax` with `$request->has('action_name')` dispatch
+2. Page data is passed from `PageController.php` — do not use API routes in views
+3. Use `jQuery` (not `$`) for all JavaScript
+4. Use SweetAlert2 for confirmations — never use `confirm()`
+5. Follow Cuba Admin template components from `html/template/`
+6. Soft delete pattern: `is_deleted` boolean flag (not Laravel SoftDeletes)
 
-## License
+## API
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### `POST /api/scan`
+Mobile app endpoint for recording attendance scans.
+
+**Headers**: `Authorization: Bearer <SCAN_API_TOKEN>`
+
+**Body**:
+```json
+{
+  "user_id": 1,
+  "barcode": "OFFICE IN",
+  "selfie": ""
+}
+```
+
+On `OFFICE OUT`, automatically processes the day's attendance for that staff member.
+
+## Scheduled Commands
+
+| Command | Schedule | Description |
+|---|---|---|
+| `attendance:mark-absent` | Daily 23:55 | Marks staff without scans as absent/holiday/leave |
