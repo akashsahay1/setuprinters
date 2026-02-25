@@ -35,7 +35,7 @@
 
                 <!-- Action buttons -->
                 <div class="d-flex gap-2 mb-3">
-                    <a href="{{ url('staffs/create') }}" class="btn btn-primary" style="background-color:#7366FF;border-color:#7366FF;">Add Staff</a>
+                    <a href="{{ url('staffs/create') }}" class="btn btn-primary">Add Staff</a>
                     <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageGroupsModal">Manage Groups</button>
                     <button class="btn btn-success" id="staffCsvBtn">CSV</button>
                 </div>
@@ -141,21 +141,21 @@
                     }
                     .staff-pagination p { display: none !important; }
                     .staff-pagination .page-link {
-                        color: #7366FF;
+                        color: var(--theme-primary);
                         border: none;
                     }
                     .staff-pagination .page-link:hover {
                         color: #fff;
-                        background-color: #7366FF;
+                        background-color: var(--theme-primary);
                         border: none;
                     }
                     .staff-pagination .page-item.active .page-link {
-                        background-color: #7366FF;
+                        background-color: var(--theme-primary);
                         border: none;
                         color: #fff;
                     }
                     .staff-pagination .page-item.disabled .page-link {
-                        color: #7366FF;
+                        color: var(--theme-primary);
                         opacity: 0.5;
                         border: none;
                     }
@@ -194,7 +194,7 @@
                 <!-- Add new group -->
                 <div class="input-group mb-3">
                     <input type="text" class="form-control form-control-sm" id="newGroupName" placeholder="New group name...">
-                    <button class="btn btn-primary" id="addGroupBtn" style="background-color:#7366FF;border-color:#7366FF;">Add</button>
+                    <button class="btn btn-primary" id="addGroupBtn">Add</button>
                 </div>
                 <span id="groupMsg" class="d-block mb-2"></span>
 

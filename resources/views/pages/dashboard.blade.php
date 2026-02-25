@@ -62,7 +62,7 @@
                                             </select>
                                         </div>
                                         <div class="col-md-2 d-flex align-items-end">
-                                            <button type="button" class="btn btn-primary" id="hrmsAttLoad" style="background-color:#7366FF;border-color:#7366FF;">Submit</button>
+                                            <button type="button" class="btn btn-primary" id="hrmsAttLoad">Submit</button>
                                         </div>
                                     </div>
                                 </div>
@@ -76,7 +76,7 @@
                             <div class="card">
                                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0">Attendance <small class="text-muted">({{ now()->format('d M Y') }})</small></h6>
-                                    <span class="badge bg-primary" style="background-color:#7366FF !important;color:#fff !important;" id="scanCount">{{ $todayScans->count() }} scans</span>
+                                    <span class="badge bg-primary" id="scanCount">{{ $todayScans->count() }} scans</span>
                                 </div>
                                 <div class="card-body pt-0 px-0">
                                     <div class="table-responsive custom-scrollbar">
@@ -132,18 +132,6 @@
                             vertical-align: middle;
                         }
 
-                        #hrmsAttLoad,
-                        #hrmsAttLoad:hover,
-                        #hrmsAttLoad:focus,
-                        #hrmsAttLoad:active {
-                            background-color: #7366FF !important;
-                            border-color: #7366FF !important;
-                            color: #fff !important;
-                        }
-                        #hrmsAttLoad:hover {
-                            background-color: #5a50e0 !important;
-                            border-color: #5a50e0 !important;
-                        }
                     </style>
 
                 </div>

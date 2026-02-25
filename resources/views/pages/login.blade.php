@@ -1,20 +1,19 @@
-@include('common.header', ['title' => 'Login'])
+@include('common.header', ['title' => 'Login', 'noSidebar' => true])
     <!-- login page start-->
     <div class="container-fluid p-0">
         <div class="row m-0">
             <div class="col-12 p-0">
                 <div class="login-card login-dark">
                     <div>
-                        <div>
-                            <a class="logo" href="{{ url('/') }}">
-                                <img class="img-fluid for-light" src="{{ asset('assets/images/logo/logo.png') }}" alt="Setu Printers">
-                                <img class="img-fluid for-dark" src="{{ asset('assets/images/logo/logo_dark.png') }}" alt="Setu Printers">
-                            </a>
-                        </div>
                         <div class="login-main">
+                            <div>
+                                <a class="logo" href="{{ url('/') }}">
+                                    <img class="img-fluid for-light" src="{{ asset('assets/images/logo/logo.png') }}" alt="Setu Printers">
+                                    <img class="img-fluid for-dark" src="{{ asset('assets/images/logo/logo_dark.png') }}" alt="Setu Printers">
+                                </a>
+                            </div>
                             <form class="theme-form" id="loginForm" method="POST" action="">
-                                <h4>Sign in to account</h4>
-                                <p>Enter your email & password to login</p>
+                                <h4 class="my-4">Sign in to account</h4>
                                 <div class="form-group">
                                     <label class="col-form-label">Email Address</label>
                                     <input class="form-control user_email" type="email" name="email" required placeholder="" value="">
@@ -32,7 +31,7 @@
                                         <label class="text-muted form-check-label" for="checkbox1">Remember password</label>
                                     </div>
                                     <div class="text-end">
-                                        <button class="btn btn-primary btn-block w-100 mt-3" type="submit" id="loginBtn">Sign in</button>
+                                        <button class="btn btn-primary btn-lg btn-block w-100 mt-3" type="submit" id="loginBtn">Sign in</button>
                                     </div>
                                 </div>
                             </form>
@@ -87,4 +86,4 @@
             });
         </script>
     @endsection
-@include('common.footer')
+@include('common.footer', ['noSidebar' => true])

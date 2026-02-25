@@ -35,7 +35,7 @@
 
                 <!-- Action buttons + FY filter -->
                 <div class="d-flex gap-2 mb-3 align-items-center">
-                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHolidayModal" style="background-color:#7366FF;border-color:#7366FF;">Add Holiday</button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addHolidayModal">Add Holiday</button>
                     <div class="ms-auto d-flex align-items-center gap-2">
                         <label class="form-label mb-0 fw-semibold">Financial Year:</label>
                         <select class="form-select form-select-sm" id="fyFilter" style="width:auto;">
@@ -58,7 +58,7 @@
                                             <span class="holiday-name-display fw-semibold">{{ $h->name }}</span>
                                             <small class="text-muted ms-2">{{ $h->date->format('d M Y') }}</small>
                                             @if($h->is_yearly)
-                                            <span class="badge bg-primary ms-2" style="background-color:#7366FF!important;">Yearly</span>
+                                            <span class="badge bg-primary ms-2">Yearly</span>
                                             @endif
                                         </div>
                                         <div class="holiday-edit d-none" style="flex:1;">
@@ -119,8 +119,8 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" data-bs-dismiss="modal" style="background-color:#7366FF;border-color:#7366FF;color:#fff;">Cancel</button>
-                <button type="button" class="btn btn-primary" id="addHolidayBtn" style="background-color:#7366FF;border-color:#7366FF;">Add Holiday</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="addHolidayBtn">Add Holiday</button>
             </div>
         </div>
     </div>
@@ -143,7 +143,7 @@
                 <div id="deleteHolidayError" class="text-danger small" style="display:none;"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" data-bs-dismiss="modal" style="background-color:#7366FF;border-color:#7366FF;color:#fff;">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="deleteHolidaySubmit">Delete</button>
             </div>
         </div>
@@ -208,7 +208,7 @@ jQuery(function(){
                 var dateStr = dateObj.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
                 // Remove "no holidays" message if present
                 jQuery('#noHolidaysMsg').remove();
-                var yearlyBadge = h.is_yearly ? '<span class="badge bg-primary ms-2" style="background-color:#7366FF!important;">Yearly</span>' : '';
+                var yearlyBadge = h.is_yearly ? '<span class="badge bg-primary ms-2">Yearly</span>' : '';
                 var li = '<li class="list-group-item d-flex justify-content-between align-items-center" data-hid="'+h.id+'">'
                     + '<div class="holiday-display">'
                     + '<span class="holiday-name-display fw-semibold">'+jQuery('<span>').text(h.name).html()+'</span>'

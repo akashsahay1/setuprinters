@@ -134,7 +134,7 @@
                             </div>
                         </div>
                         <div class="mt-3" style="padding-bottom:60px;">
-                            <button class="btn btn-primary" id="hrmsStaffSaveBtn" style="background-color:#7366FF;border-color:#7366FF;">Create Staff</button>
+                            <button class="btn btn-primary" id="hrmsStaffSaveBtn">Create Staff</button>
                             <span id="hrmsStaffSaveMsg" class="ms-2"></span>
                         </div>
                     </div>{{-- /col --}}

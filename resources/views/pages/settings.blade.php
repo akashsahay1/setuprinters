@@ -117,7 +117,7 @@
                 <div id="purgeError" class="text-danger small" style="display:none;"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn" data-bs-dismiss="modal" style="background-color:#7366FF;border-color:#7366FF;color:#fff;">Cancel</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="purgeSubmitBtn">Purge Data</button>
             </div>
         </div>

@@ -265,7 +265,7 @@ jQuery(function(){
             text: 'This will grant all selected leave requests.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#7366FF',
+            confirmButtonColor: '#0093FF',
             confirmButtonText: 'Yes, approve all'
         }).then(function(result) {
             if (!result.isConfirmed) return;
@@ -341,7 +341,7 @@ jQuery(function(){
             text: 'This will grant the leave request.',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#7366FF',
+            confirmButtonColor: '#0093FF',
             confirmButtonText: 'Yes, approve it'
         }).then(function(result) {
             if (!result.isConfirmed) return;

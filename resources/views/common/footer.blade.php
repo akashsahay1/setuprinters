@@ -5,6 +5,7 @@
         <!-- feather icon js-->
         <script src="{{ url('assets/js/icons/feather-icon/feather.min.js') }}"></script>
         <script src="{{ url('assets/js/icons/feather-icon/feather-icon.js') }}"></script>
+        @if(empty($noSidebar))
         <!-- scrollbar js-->
         <script src="{{ url('assets/js/scrollbar/simplebar.min.js') }}"></script>
         <script src="{{ url('assets/js/scrollbar/custom.js') }}"></script>
@@ -13,6 +14,7 @@
         <!-- Plugins JS start-->
         <script src="{{ url('assets/js/sidebar-menu.js') }}"></script>
         <script src="{{ url('assets/js/sidebar-pin.js') }}"></script>
+        @endif
         
         <!-- Sweet Alert -->
         <script src="{{ url('assets/js/sweet-alert/sweetalert.min.js') }}"></script>

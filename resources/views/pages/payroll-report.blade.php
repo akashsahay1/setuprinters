@@ -56,8 +56,8 @@
                                     </select>
                                 </div>
                                 <div class="col-md-6 d-flex align-items-end gap-2">
-                                    <button type="submit" class="btn btn-primary" id="hrmsPrGenerate" style="background-color:#7366FF;border-color:#7366FF;">Generate</button>
-                                    <button type="button" class="btn btn-success" id="hrmsPrSave" style="display:none;background-color:#7366FF;border-color:#7366FF;">Save Payroll</button>
+                                    <button type="submit" class="btn btn-primary" id="hrmsPrGenerate">Generate</button>
+                                    <button type="button" class="btn btn-primary" id="hrmsPrSave" style="display:none;">Save Payroll</button>
                                     <button type="button" class="btn btn-success" id="hrmsPrCsv" style="display:none;">CSV</button>
                                 </div>
                             </div>
@@ -69,19 +69,11 @@
                                         <th style="width:30px;"></th>
                                         <th>Department</th>
                                         <th>Name</th>
-                                        <th class="text-end">Basic</th>
+                                        <th class="text-center">Basic</th>
                                         <th class="text-center">Absent</th>
-                                        <th class="text-end">Advance</th>
-                                        <th class="text-end">Final Pay</th>
-                                        <th class="text-end">Paid Cash</th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
-                                        <th class="d-none"></th>
+                                        <th class="text-center">Advance</th>
+                                        <th class="text-center">Final Pay</th>
+                                        <th class="text-center">Paid Cash</th>
                                     </tr>
                                 </thead>
                                 <tbody id="hrmsPrBody">
@@ -98,8 +90,8 @@
 <style>
 #hrmsPrTable td.dt-control {
     cursor: pointer;
-    position: relative;
-    padding-left: 26px;
+    text-align: center;
+    vertical-align: middle;
 }
 #hrmsPrTable td.dt-control::before {
     content: '+';
@@ -108,20 +100,16 @@
     justify-content: center;
     width: 18px;
     height: 18px;
-    border: 1px solid #7366FF;
+    border: 1px solid var(--theme-primary);
     border-radius: 50%;
-    color: #7366FF;
+    color: var(--theme-primary);
     font-size: 14px;
     font-weight: bold;
     line-height: 1;
-    position: absolute;
-    left: 4px;
-    top: 50%;
-    transform: translateY(-50%);
 }
 #hrmsPrTable tr.shown td.dt-control::before {
     content: '\2212';
-    background-color: #7366FF;
+    background-color: var(--theme-primary);
     color: #fff;
 }
 #hrmsPrTable tr.child-row td {
@@ -130,8 +118,8 @@
 }
 #hrmsPrTable tr.child-row .child-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 8px 24px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px 32px;
 }
 #hrmsPrTable tr.child-row .child-item label {
     font-size: 0.75rem;
@@ -264,20 +252,11 @@ jQuery(function(){
             html += '<td class="dt-control"></td>';
             html += '<td>'+row.dept+'</td>';
             html += '<td>'+row.name+'</td>';
-            html += '<td class="text-end">'+row.basic.toFixed(2)+'</td>';
+            html += '<td class="text-center">'+row.basic.toFixed(2)+'</td>';
             html += '<td class="text-center">'+row.absent+'</td>';
-            html += '<td><input type="number" class="form-control form-control-sm text-end pr-advance" data-idx="'+idx+'" value="'+row.advance.toFixed(2)+'" step="0.01" min="0" style="width:90px;"></td>';
-            html += '<td class="text-end fw-bold pr-final">'+row.finalPay.toFixed(2)+'</td>';
-            html += '<td><input type="number" class="form-control form-control-sm text-end pr-cash" data-idx="'+idx+'" value="'+row.paidCash.toFixed(2)+'" step="0.01" min="0" style="width:90px;"></td>';
-            // Hidden columns (for child row data — not rendered as visible columns)
-            html += '<td class="d-none">'+row.account+'</td>';
-            html += '<td class="d-none">'+row.dailySal.toFixed(2)+'</td>';
-            html += '<td class="d-none">'+row.daysInMonth+'</td>';
-            html += '<td class="d-none">'+row.absentDed.toFixed(2)+'</td>';
-            html += '<td class="d-none">'+row.otDays+'</td>';
-            html += '<td class="d-none">'+row.otAmount.toFixed(2)+'</td>';
-            html += '<td class="d-none">'+row.paidBank.toFixed(2)+'</td>';
-            html += '<td class="d-none">'+row.paidPf.toFixed(2)+'</td>';
+            html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-advance pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.advance.toFixed(2)+'" style="width:90px;"></td>';
+            html += '<td class="text-center fw-bold pr-final">'+row.finalPay.toFixed(2)+'</td>';
+            html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-cash pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.paidCash.toFixed(2)+'" style="width:90px;"></td>';
             html += '</tr>';
         });
 
@@ -315,6 +294,29 @@ jQuery(function(){
             tr.addClass('shown');
             tr.after(buildChildHtml(row));
         }
+    });
+
+    // Allow only digits and one decimal point in numeric inputs
+    jQuery(document).on('keydown', '.pr-numeric', function(e){
+        var key = e.key;
+        if(['Backspace','Delete','Tab','ArrowLeft','ArrowRight','Home','End'].indexOf(key) !== -1) return;
+        if((e.ctrlKey || e.metaKey) && ['a','c','v','x'].indexOf(key.toLowerCase()) !== -1) return;
+        if(key === '.' && this.value.indexOf('.') === -1) return;
+        if(key >= '0' && key <= '9') return;
+        e.preventDefault();
+    });
+
+    // Block paste of non-numeric content
+    jQuery(document).on('paste', '.pr-numeric', function(e){
+        var paste = (e.originalEvent.clipboardData || window.clipboardData).getData('text');
+        if(!/^\d*\.?\d*$/.test(paste)) e.preventDefault();
+    });
+
+    // Format to 2 decimal places on blur
+    jQuery(document).on('blur', '.pr-numeric', function(){
+        var val = parseFloat(this.value) || 0;
+        if(val < 0) val = 0;
+        this.value = val.toFixed(2);
     });
 
     // Recalculate on advance/cash input change

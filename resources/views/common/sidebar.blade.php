@@ -111,7 +111,7 @@
 </div>
 <style>
 .sidebar-wrapper .sidebar-main-title h6.lan-1 {
-    color: #7366FF !important;
+    color: var(--theme-primary) !important;
 }
 .sidebar-wrapper .sidebar-main-title h6,
 .sidebar-wrapper .sidebar-link span,
