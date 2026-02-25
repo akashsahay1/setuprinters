@@ -34,9 +34,8 @@
                 <!-- Container-fluid starts-->
                 <div class="container-fluid mt-4 user-list-wrapper">
                     <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header">
                             <h5>Users</h5>
-                            <a class="btn btn-primary f-w-500" href="{{ url('users/add') }}">Add New</a>
                         </div>
                         <div class="card-body pt-0 px-0">
                             <div class="list-product user-list-table">
@@ -44,14 +43,10 @@
                                     <table class="table" id="roles-permission">
                                         <thead>
                                             <tr>
-                                                <th><span class="c-o-light f-w-600">Thumbnail</span></th>
-                                                <th><span class="c-o-light f-w-600">Name</span></th>
-                                                <th><span class="c-o-light f-w-600">Employee ID</span></th>
-                                                <th><span class="c-o-light f-w-600">Email</span></th>
-                                                <th><span class="c-o-light f-w-600">Role</span></th>
-                                                <th><span class="c-o-light f-w-600">Creation Date</span></th>
-                                                <th><span class="c-o-light f-w-600">Status</span></th>
-                                                <th><span class="c-o-light f-w-600">Actions</span></th>
+                                                <th>Name</th>
+                                                <th>Email</th>
+                                                <th>Creation Date</th>
+                                                <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -59,39 +54,20 @@
                                                 @foreach($data->users as $user)
                                                     <tr class="product-removes inbox-data">
                                                         <td>
-                                                            <img src="{{ asset('assets/images/test/user_profile_default.png') . ($user->profile_image ? '/' . $user->profile_image : '') }}" alt="" style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;">
-                                                        </td>
-                                                        <td>
                                                             <a href="user-profile.html">{{ $user->full_name }}</a>
-                                                        </td>
-                                                        <td>
-                                                            <p>{{ $user->employee_id }}</p>
                                                         </td>
                                                         <td>
                                                             <p>{{ $user->email }}</p>
                                                         </td>
                                                         <td>
-                                                            <p>{{ $user->user_role }}</p>
-                                                        </td>
-                                                        <td>
-                                                            <p>{{ date('d M Y,h:i A', strtotime($user->created_at)) }}</p>
+                                                            <p>{{ date('d M Y, h:i A', strtotime($user->created_at)) }}</p>
                                                         </td>
                                                         <td><span class="badge badge-light-success">Active</span></td>
-                                                        <td>
-                                                            <div class="common-align gap-2 justify-content-center">
-                                                                <a class="square-white" href="add-user.html" title="Edit">
-                                                                    <svg><use href="{{ asset('assets/svg/icon-sprite.svg#edit-content') }}"></use></svg>
-                                                                </a>
-                                                                <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 user-delete-btn" data-id="{{ $user->id }}" data-name="{{ $user->full_name }}" title="Delete">
-                                                                    <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
-                                                                </button>
-                                                            </div>
-                                                        </td>
                                                     </tr>
                                                 @endforeach
                                             @else
                                                 <tr>
-                                                    <td colspan="8" class="text-center">No users found.</td>
+                                                    <td colspan="4" class="text-center">No users found.</td>
                                                 </tr>
                                             @endif
                                         </tbody>

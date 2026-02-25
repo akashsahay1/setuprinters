@@ -76,7 +76,7 @@
                             <div class="card">
                                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                                     <h6 class="mb-0">Attendance <small class="text-muted">({{ now()->format('d M Y') }})</small></h6>
-                                    <span class="badge bg-primary" id="scanCount">{{ $todayScans->count() }} scans</span>
+                                    <span class="badge bg-primary text-white" id="scanCount">{{ $todayScans->count() }} scans</span>
                                 </div>
                                 <div class="card-body pt-0 px-0">
                                     <div class="table-responsive custom-scrollbar">

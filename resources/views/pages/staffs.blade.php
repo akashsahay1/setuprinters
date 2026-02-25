@@ -36,7 +36,7 @@
                 <!-- Action buttons -->
                 <div class="d-flex gap-2 mb-3">
                     <a href="{{ url('staffs/create') }}" class="btn btn-primary">Add Staff</a>
-                    <button class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#manageGroupsModal">Manage Groups</button>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manageGroupsModal">Manage Groups</button>
                     <button class="btn btn-success" id="staffCsvBtn">CSV</button>
                 </div>
 

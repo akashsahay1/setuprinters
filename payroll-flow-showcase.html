@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payroll Flow - SetupPrinters HRMS</title>
+    <style>
+        @page { margin: 20mm 15mm; size: A4; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #333; line-height: 1.6; padding: 40px; max-width: 900px; margin: 0 auto; }
+
+        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #0093FF; padding-bottom: 20px; }
+        .header h1 { font-size: 24px; color: #0093FF; margin-bottom: 4px; }
+        .header p { color: #666; font-size: 13px; }
+
+        h2 { font-size: 18px; color: #0093FF; margin: 28px 0 12px; border-left: 4px solid #0093FF; padding-left: 12px; }
+        h3 { font-size: 15px; color: #444; margin: 20px 0 8px; }
+
+        table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 12px; }
+        th, td { border: 1px solid #ddd; padding: 7px 10px; text-align: left; }
+        th { background: #f0f7ff; color: #333; font-weight: 600; }
+        td.num { text-align: right; font-family: 'Consolas', monospace; }
+        td.center { text-align: center; }
+        tr.highlight { background: #f0f7ff; }
+        tr.total { background: #e8f4ff; font-weight: 700; }
+        tr.empty td { color: #aaa; text-align: center; }
+        tr.saved td:first-child::after { content: ' (Saved)'; font-size: 10px; color: #0093FF; font-weight: 600; }
+        tr.live td:first-child::after { content: ' (Live)'; font-size: 10px; color: #e67e22; font-weight: 600; }
+
+        .calc-box { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 8px; padding: 16px 20px; margin: 10px 0 18px; font-family: 'Consolas', monospace; font-size: 13px; line-height: 1.8; }
+        .calc-box .label { color: #666; display: inline-block; width: 200px; }
+        .calc-box .sep { border-top: 1px dashed #ccc; margin: 6px 0; }
+        .calc-box .result { color: #0093FF; font-weight: 700; }
+
+        .flow-box { background: #fff; border: 2px solid #0093FF; border-radius: 10px; padding: 20px; margin: 15px 0; }
+        .flow-step { display: flex; align-items: flex-start; margin: 10px 0; }
+        .flow-num { background: #0093FF; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; flex-shrink: 0; margin-right: 12px; margin-top: 2px; }
+        .flow-text { flex: 1; }
+        .flow-text strong { color: #333; }
+        .flow-text .sub { color: #888; font-size: 12px; }
+        .flow-arrow { text-align: center; color: #0093FF; font-size: 18px; margin: 4px 0; padding-left: 10px; }
+
+        .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+        .badge-blue { background: #e8f4ff; color: #0093FF; }
+        .badge-orange { background: #fff3e0; color: #e67e22; }
+        .badge-gray { background: #f5f5f5; color: #999; }
+
+        .note { background: #fff8e1; border-left: 4px solid #ffc107; padding: 10px 14px; margin: 12px 0; font-size: 12px; color: #666; border-radius: 0 6px 6px 0; }
+
+        .page-break { page-break-before: always; }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>SetupPrinters HRMS - Payroll Flow</h1>
+    <p>Complete Payroll Processing Guide &bull; Staff: Abhay Ji Office (ID: 14) &bull; Generated: Feb 2026</p>
+</div>
+
+<h2>1. Staff Profile</h2>
+<table>
+    <tr><th style="width:200px;">Field</th><th>Value</th></tr>
+    <tr><td>Name</td><td><strong>Abhay Ji Office</strong></td></tr>
+    <tr><td>Department</td><td>Office</td></tr>
+    <tr><td>Basic Salary</td><td class="num">8,000.00</td></tr>
+    <tr><td>Wage Calculation Type</td><td>Fixed Salary (not hour-based)</td></tr>
+    <tr><td>PF Enabled</td><td>Yes (12%)</td></tr>
+    <tr><td>Bank Account</td><td>12345677890</td></tr>
+    <tr><td>Working Days (constant)</td><td class="num">26</td></tr>
+    <tr class="highlight"><td>1 Day Salary</td><td class="num">8,000 &divide; 26 = <strong>307.69</strong></td></tr>
+    <tr class="highlight"><td>Monthly PF Deduction</td><td class="num">8,000 &times; 12% = <strong>960.00</strong></td></tr>
+</table>
+
+<h2>2. Single Month: August 2025</h2>
+
+<h3>Step 1 &mdash; Attendance Processing</h3>
+<p style="font-size:13px;color:#666;margin-bottom:8px;">Admin clicks <strong>Generate</strong> for Aug 2025. System processes barcode scans and creates daily attendance records.</p>
+<table>
+    <tr><th>Status</th><th style="width:100px;" class="center">Days</th></tr>
+    <tr><td>Present</td><td class="center">4</td></tr>
+    <tr><td>Absent</td><td class="center"><strong>22</strong></td></tr>
+    <tr><td>Holidays</td><td class="center">5</td></tr>
+    <tr class="highlight"><td><strong>Total Days in August</strong></td><td class="center"><strong>31</strong></td></tr>
+</table>
+
+<h3>Step 2 &mdash; Payroll Computation (in browser)</h3>
+<div class="calc-box">
+    <span class="label">Basic Salary</span> = 8,000.00<br>
+    <span class="label">1 Day Salary</span> = 8,000 &divide; 26 = 307.69<br>
+    <span class="label">Absent Deduction</span> = 22 &times; 307.69 = 6,769.18<br>
+    <span class="label">OT Amount</span> = 0.00<br>
+    <span class="label">Advance</span> = 0.00 <span style="color:#999;">(editable by admin)</span><br>
+    <span class="label">PF</span> = 8,000 &times; 12% = 960.00<br>
+    <div class="sep"></div>
+    <span class="label"><strong>Final Pay</strong></span> = 8,000 &minus; 6,769.18 + 0 &minus; 0 &minus; 960<br>
+    <span class="label"></span> = <span class="result">270.82</span><br>
+    <div class="sep"></div>
+    <span class="label">Paid Cash</span> = 0.00 <span style="color:#999;">(editable by admin)</span><br>
+    <span class="label"><strong>Paid in Bank</strong></span> = 270.82 &minus; 0 = <span class="result">270.82</span>
+</div>
+
+<h3>Step 3 &mdash; Save Payroll</h3>
+<p style="font-size:13px;color:#666;">Admin clicks <strong>Save Payroll</strong>. This exact snapshot is stored in the <code>payroll_records</code> table &mdash; locking in the salary, attendance, and computed amounts. If salary changes later, this month&rsquo;s record stays accurate.</p>
+
+<table>
+    <tr><th>Saved Record Field</th><th>Value</th></tr>
+    <tr><td>Basic Amount</td><td class="num">8,000.00</td></tr>
+    <tr><td>1 Day Salary</td><td class="num">307.69</td></tr>
+    <tr><td>Days Absent</td><td class="center">22</td></tr>
+    <tr><td>Absent Deduction</td><td class="num">6,769.18</td></tr>
+    <tr><td>OT Days / Amount</td><td class="num">0 / 0.00</td></tr>
+    <tr><td>Advance</td><td class="num">0.00</td></tr>
+    <tr><td>PF</td><td class="num">960.00</td></tr>
+    <tr class="highlight"><td><strong>Final Pay</strong></td><td class="num"><strong>270.82</strong></td></tr>
+    <tr><td>Paid in Bank</td><td class="num">270.82</td></tr>
+    <tr><td>Paid Cash</td><td class="num">0.00</td></tr>
+</table>
+
+<div class="page-break"></div>
+
+<h2>3. Full Financial Year: FY 2025&ndash;2026</h2>
+<p style="font-size:13px;color:#666;margin-bottom:12px;">Indian Financial Year runs <strong>April 2025 &rarr; March 2026</strong>. The yearly view shows all 12 months for a single staff member.</p>
+
+<div class="note">
+    <strong>Data Sources:</strong><br>
+    <span class="badge badge-blue">Saved</span> &mdash; Uses exact historical snapshot from <code>payroll_records</code> (admin already generated &amp; saved)<br>
+    <span class="badge badge-orange">Live</span> &mdash; Computed on-the-fly from attendance data + current salary (not yet saved)<br>
+    <span class="badge badge-gray">No Data</span> &mdash; No attendance records or saved payroll for this month
+</div>
+
+<table>
+    <tr>
+        <th>Month</th>
+        <th class="num">Basic</th>
+        <th class="num">1 Day Sal</th>
+        <th class="center">Absent</th>
+        <th class="num">Absent Ded</th>
+        <th class="center">OT Days</th>
+        <th class="num">OT Amt</th>
+        <th class="num">Advance</th>
+        <th class="num">PF</th>
+        <th class="num">Final Pay</th>
+        <th class="num">Bank</th>
+        <th class="num">Cash</th>
+    </tr>
+    <tr class="empty"><td>Apr 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>May 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>Jun 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>Jul 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="saved highlight">
+        <td><strong>Aug 2025</strong></td>
+        <td class="num">8,000.00</td>
+        <td class="num">307.69</td>
+        <td class="center">22</td>
+        <td class="num">6,769.18</td>
+        <td class="center">0</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">960.00</td>
+        <td class="num"><strong>270.82</strong></td>
+        <td class="num">270.82</td>
+        <td class="num">0.00</td>
+    </tr>
+    <tr class="empty"><td>Sep 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>Oct 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>Nov 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="empty"><td>Dec 2025</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="live">
+        <td><strong>Jan 2026</strong></td>
+        <td class="num">8,000.00</td>
+        <td class="num">307.69</td>
+        <td class="center">27</td>
+        <td class="num">8,307.63</td>
+        <td class="center">0</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">960.00</td>
+        <td class="num" style="color:#dc3545;"><strong>-1,267.63</strong></td>
+        <td class="num" style="color:#dc3545;">-1,267.63</td>
+        <td class="num">0.00</td>
+    </tr>
+    <tr class="saved">
+        <td>Feb 2026</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="center">24</td>
+        <td class="num">0.00</td>
+        <td class="center">0</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+    </tr>
+    <tr class="empty"><td>Mar 2026</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td><td>--</td></tr>
+    <tr class="total">
+        <td>TOTAL</td>
+        <td class="num">16,000.00</td>
+        <td class="center">--</td>
+        <td class="center">73</td>
+        <td class="num">15,076.81</td>
+        <td class="center">0</td>
+        <td class="num">0.00</td>
+        <td class="num">0.00</td>
+        <td class="num">1,920.00</td>
+        <td class="num"><strong>-996.81</strong></td>
+        <td class="num">-996.81</td>
+        <td class="num">0.00</td>
+    </tr>
+</table>
+
+<div class="note">
+    <strong>Note:</strong> Feb 2026 shows all zeros because it was saved when salary was still set to 0.00. Jan 2026 shows negative Final Pay because 27 absent days exceeds the 26 working days constant &mdash; this month needs review.
+</div>
+
+<div class="page-break"></div>
+
+<h2>4. Complete Process Flow</h2>
+
+<div class="flow-box">
+    <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-text">
+            <strong>Daily Barcode Scanning</strong><br>
+            <span class="sub">Staff scans barcode at OFFICE IN / OFFICE OUT &rarr; stored in <code>scanned_barcodes</code> table</span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-text">
+            <strong>Monthly View &rarr; Generate</strong><br>
+            <span class="sub">Admin selects month/year, clicks Generate. Backend processes barcode scans into <code>daily_attendances</code> (one row per staff per day: check-in, check-out, hours, status, OT)</span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-text">
+            <strong>Payroll Computation</strong><br>
+            <span class="sub">Backend returns aggregated attendance per staff. Browser computes:<br>
+            <code>Final Pay = Basic &minus; (Absent &times; Daily Salary) + OT &minus; Advance &minus; PF</code></span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-text">
+            <strong>Admin Review &amp; Adjust</strong><br>
+            <span class="sub">Admin can edit <strong>Advance</strong> and <strong>Paid Cash</strong> per staff. Expand rows (+) to see detailed breakdown.</span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-text">
+            <strong>Save Payroll</strong><br>
+            <span class="sub">Snapshot saved to <code>payroll_records</code> table. This locks the salary, attendance, and amounts at that point in time. Future salary changes won&rsquo;t affect this month&rsquo;s record.</span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-text">
+            <strong>Yearly View</strong><br>
+            <span class="sub">Admin switches to Yearly (Single Staff), selects staff + FY, clicks Generate.<br>
+            Shows 12 months: <span class="badge badge-blue">Saved</span> months use historical snapshot, <span class="badge badge-orange">Live</span> months compute from current data, plus a totals row.</span>
+        </div>
+    </div>
+    <div class="flow-arrow">&darr;</div>
+
+    <div class="flow-step">
+        <div class="flow-num">7</div>
+        <div class="flow-text">
+            <strong>CSV Export</strong><br>
+            <span class="sub">Both monthly and yearly views support CSV download for external reporting.</span>
+        </div>
+    </div>
+</div>
+
+<h2>5. Database Tables Involved</h2>
+<table>
+    <tr><th>Table</th><th>Purpose</th><th>Key Fields</th></tr>
+    <tr><td><code>staff</code></td><td>Staff master data</td><td>basic_salary, pf_enabled, pf_percentage, group_id</td></tr>
+    <tr><td><code>staff_groups</code></td><td>Departments</td><td>name (e.g., Office, Printing)</td></tr>
+    <tr><td><code>scanned_barcodes</code></td><td>Raw barcode scan events</td><td>user_id, barcode (OFFICE IN/OUT), created_at</td></tr>
+    <tr><td><code>daily_attendances</code></td><td>Processed daily attendance</td><td>staff_id, date, status, check_in, check_out, ot_hours, ot_wage</td></tr>
+    <tr><td><code>payroll_records</code></td><td>Saved monthly payroll snapshots</td><td>staff_id, month, year, basic_amount, final_pay, etc.</td></tr>
+    <tr><td><code>leave_applications</code></td><td>Leave requests</td><td>staff_id, leave_date, leave_type, status</td></tr>
+    <tr><td><code>holidays</code></td><td>Company holidays</td><td>date, name, type, financial_year</td></tr>
+</table>
+
+<div style="text-align:center; margin-top:30px; padding-top:20px; border-top:2px solid #eee; color:#999; font-size:12px;">
+    SetupPrinters HRMS &bull; Payroll Processing Flow &bull; Confidential
+</div>
+
+</body>
+</html>
