@@ -9,4 +9,5 @@ Route::get('user/list', [UserController::class, 'index']);
 
 Route::middleware(VerifyScanApiToken::class)->group(function () {
     Route::post('scan', [ScanApiController::class, 'store']);
+    Route::post('user/scan-code', [ScanApiController::class, 'scanCode']);
 });

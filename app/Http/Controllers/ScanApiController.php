@@ -9,6 +9,7 @@ use App\Models\ScannedBarcode;
 use App\Models\Staff;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Zxing\QrReader;
 
 class ScanApiController extends Controller
 {
@@ -37,6 +38,62 @@ class ScanApiController extends Controller
 
         // 2. If OFFICE OUT, process daily attendance for this user + today
         if (trim($request->barcode) === 'OFFICE OUT') {
+            $date = $scan->created_at->format('Y-m-d');
+            $result['attendance'] = $this->processSingleDay($staff, $date);
+        }
+
+        return response()->json($result);
+    }
+
+    public function scanCode(Request $request)
+    {
+        $request->validate([
+            'selfie'   => 'required|image|max:10240',
+            'qr_image' => 'required|image|max:10240',
+            'barcode'  => 'required|string|in:OFFICE IN,OFFICE OUT',
+        ]);
+
+        // 1. Decode QR code from uploaded image
+        $qrPath  = $request->file('qr_image')->getRealPath();
+        $qrReader = new QrReader($qrPath);
+        $qrValue  = $qrReader->text();
+
+        if (!$qrValue || $qrValue === '') {
+            return response()->json(['status' => false, 'message' => 'Could not read QR code from image'], 422);
+        }
+
+        // 2. Find staff by QR code value
+        $staff = Staff::active()->where('qr_code', $qrValue)->first();
+        if (!$staff) {
+            return response()->json(['status' => false, 'message' => 'No staff found for this QR code'], 404);
+        }
+
+        // 3. Save selfie to public/uploads/selfies/
+        $selfieFile = $request->file('selfie');
+        $selfieName = 'selfie_' . $staff->id . '_' . time() . '.' . $selfieFile->getClientOriginalExtension();
+        $selfieFile->move(public_path('uploads/selfies'), $selfieName);
+        $selfiePath = 'uploads/selfies/' . $selfieName;
+
+        // 4. Create scan record
+        $barcode = trim($request->input('barcode'));
+        $scan = ScannedBarcode::create([
+            'user_id'    => $staff->id,
+            'barcode'    => $barcode,
+            'selfie'     => $selfiePath,
+            'is_deleted' => false,
+        ]);
+
+        $result = [
+            'status'     => true,
+            'message'    => 'Scan recorded',
+            'scan_id'    => $scan->id,
+            'staff_name' => $staff->full_name,
+            'qr_value'   => $qrValue,
+            'barcode'    => $barcode,
+        ];
+
+        // 5. If OFFICE OUT, process daily attendance
+        if (trim($barcode) === 'OFFICE OUT') {
             $date = $scan->created_at->format('Y-m-d');
             $result['attendance'] = $this->processSingleDay($staff, $date);
         }

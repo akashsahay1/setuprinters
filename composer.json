@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "khanamiryan/qrcode-detector-decoder": "^2.0",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1"
     },
@@ -83,6 +84,13 @@
         "allow-plugins": {
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
+        },
+        "audit": {
+            "ignore": {
+                "PKSA-rkkf-636k-qjb3": "Symfony process advisory - not exploitable in this context",
+                "PKSA-4s4z-t146-6123": "PsySH advisory - dev dependency only",
+                "PKSA-z3gr-8qht-p93v": "PHPUnit advisory - dev dependency only"
+            }
         }
     },
     "minimum-stability": "stable",
