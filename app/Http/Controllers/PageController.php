@@ -79,12 +79,16 @@ class PageController extends Controller
 
     public function users()
     {
-        
         $data = new stdClass();
-
-        $data->users = User::paginate(30);
+        $data->users = User::active()->paginate(30);
 
         return view('pages.users', ['data' => $data]);
+    }
+
+    public function editUser($id)
+    {
+        $user = User::active()->findOrFail($id);
+        return view('pages.adduser', ['editUser' => $user]);
     }
 
     public function dashboard()

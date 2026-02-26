@@ -70,16 +70,6 @@
                     <div class="col-md-4">
                         <div class="card">
                             <div class="card-body">
-                                <h5 class="mb-3">Change Password</h5>
-                                <button class="btn btn-purple" data-bs-toggle="modal" data-bs-target="#changePasswordModal">
-                                    Click Here
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="card">
-                            <div class="card-body">
                                 <h5 class="mb-3">Holidays</h5>
                                 <a href="{{ url('holidays') }}" class="btn btn-purple">
                                     Manage Holidays
@@ -119,37 +109,6 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-danger" id="purgeSubmitBtn">Purge Data</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Change Password Modal -->
-<div class="modal fade" id="changePasswordModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Change Password</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="cpMsg" class="mb-3 d-none"></div>
-                <div class="mb-3">
-                    <label class="form-label">Current Password</label>
-                    <input type="password" class="form-control" id="cpCurrent" placeholder="Enter current password">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">New Password</label>
-                    <input type="password" class="form-control" id="cpNew" placeholder="Enter new password">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Confirm New Password</label>
-                    <input type="password" class="form-control" id="cpConfirm" placeholder="Confirm new password">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-purple" id="cpSubmitBtn">Update Password</button>
             </div>
         </div>
     </div>
@@ -538,65 +497,6 @@ jQuery(document).ready(function() {
         jQuery('#purgeError').hide().text('');
     });
 
-    // =====================
-    // Change Password
-    // =====================
-    jQuery('#changePasswordModal').on('hidden.bs.modal', function() {
-        jQuery('#cpCurrent, #cpNew, #cpConfirm').val('').removeClass('is-invalid');
-        jQuery('#cpMsg').addClass('d-none').html('');
-    });
-
-    jQuery('#cpSubmitBtn').on('click', function() {
-        var current = jQuery('#cpCurrent').val();
-        var newPass = jQuery('#cpNew').val();
-        var confirm = jQuery('#cpConfirm').val();
-        var $btn = jQuery(this);
-
-        jQuery('#cpCurrent, #cpNew, #cpConfirm').removeClass('is-invalid');
-        jQuery('#cpMsg').addClass('d-none').html('');
-
-        var valid = true;
-        if (!current) { jQuery('#cpCurrent').addClass('is-invalid'); valid = false; }
-        if (!newPass) { jQuery('#cpNew').addClass('is-invalid'); valid = false; }
-        if (!confirm) { jQuery('#cpConfirm').addClass('is-invalid'); valid = false; }
-        if (!valid) return;
-
-        if (newPass.length < 8) {
-            jQuery('#cpNew').addClass('is-invalid');
-            jQuery('#cpMsg').removeClass('d-none').html('<div class="alert alert-danger py-2 mb-0">New password must be at least 8 characters.</div>');
-            return;
-        }
-
-        if (newPass !== confirm) {
-            jQuery('#cpConfirm').addClass('is-invalid');
-            jQuery('#cpMsg').removeClass('d-none').html('<div class="alert alert-danger py-2 mb-0">New password and confirmation do not match.</div>');
-            return;
-        }
-
-        $btn.prop('disabled', true).text('Updating...');
-
-        jQuery.post('{{ url("ajax") }}', {
-            change_password: 1,
-            current_password: current,
-            new_password: newPass,
-            new_password_confirmation: confirm,
-            _token: '{{ csrf_token() }}'
-        }, function(res) {
-            $btn.prop('disabled', false).text('Update Password');
-            if (res.status) {
-                jQuery('#cpMsg').removeClass('d-none').html('<div class="alert alert-success py-2 mb-0">' + res.message + '</div>');
-                jQuery('#cpCurrent, #cpNew, #cpConfirm').val('');
-                setTimeout(function() {
-                    jQuery('#changePasswordModal').modal('hide');
-                }, 1500);
-            } else {
-                jQuery('#cpMsg').removeClass('d-none').html('<div class="alert alert-danger py-2 mb-0">' + (res.message || 'Failed to change password.') + '</div>');
-            }
-        }).fail(function() {
-            $btn.prop('disabled', false).text('Update Password');
-            jQuery('#cpMsg').removeClass('d-none').html('<div class="alert alert-danger py-2 mb-0">An error occurred. Please try again.</div>');
-        });
-    });
 });
 </script>
 @endsection

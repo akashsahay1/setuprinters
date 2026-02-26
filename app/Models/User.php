@@ -11,8 +11,6 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        'user_id',
-        'employee_id',
         'full_name',
         'phone_number',
         'phone_number_2',
@@ -35,7 +33,6 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_deleted' => 'boolean',
-            'employee_id' => 'integer',
         ];
     }
 

@@ -117,7 +117,13 @@ class ScanApiController extends Controller
             $totalHours = round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2);
             $status     = $totalHours > 4 ? 'present' : 'half_day';
 
-            if ($staff->wage_calc_type === 'hour_based') {
+            if ($isSunday || $isHoliday) {
+                // Holiday/Sunday with attendance: holiday pay + all hours as OT
+                $baseWage = round($dailyWage, 2);
+                $otHours  = $this->capOt($staff, $totalHours);
+                $otWage   = round($hourlyWage * $otHours, 2);
+                $isOt     = $otHours > 0;
+            } elseif ($staff->wage_calc_type === 'hour_based') {
                 $regular  = min($totalHours, $shiftHours);
                 $excess   = max(0, $totalHours - $shiftHours);
                 $otHours  = $this->capOt($staff, $excess);
@@ -131,12 +137,31 @@ class ScanApiController extends Controller
             $checkIn  = $hasIn ? $inScans[0] : null;
             $checkOut = $hasOut ? end($outScans) : null;
             $status   = 'half_day';
-            $baseWage = round($dailyWage / 2, 2);
+            $baseWage = round($dailyWage, 2);
+
+            if ($isSunday || $isHoliday) {
+                // Holiday/Sunday with partial scan: holiday pay + partial hours as OT
+                $partialHours = ($checkIn && $checkOut)
+                    ? round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2)
+                    : round($shiftHours / 2, 2);
+                $otHours = $this->capOt($staff, $partialHours);
+                $otWage  = round($hourlyWage * $otHours, 2);
+                $isOt    = $otHours > 0;
+            }
         } elseif ($leave) {
-            $status   = 'leave';
-            $baseWage = ($leave->leave_type !== 'unpaid') ? round($dailyWage, 2) : 0;
+            // Check 2-day paid leave limit per FY
+            $isPaid = ($leave->leave_type !== 'unpaid') && ($this->countPaidLeavesInFy($staff->id, $dateStr) <= 2);
+
+            if ($isPaid) {
+                $status   = 'present';
+                $baseWage = round($dailyWage, 2);
+            } else {
+                $status   = 'leave';
+                $baseWage = 0;
+            }
         } elseif ($isSunday || $isHoliday) {
-            $status = 'holiday';
+            $status   = 'holiday';
+            $baseWage = round($dailyWage, 2);
         }
 
         // Upsert daily attendance
@@ -170,5 +195,21 @@ class ScanApiController extends Controller
         if ($staff->ot_type === 'hours') return min($excessHours, (float) ($staff->ot_max_hours ?: 0));
         if ($staff->ot_type === 'minutes') return min($excessHours, ((float) ($staff->ot_max_minutes ?: 0)) / 60);
         return $excessHours;
+    }
+
+    private function countPaidLeavesInFy(int $staffId, string $dateStr): int
+    {
+        $date = Carbon::parse($dateStr);
+        $fyStart = $date->month >= 4
+            ? Carbon::create($date->year, 4, 1)
+            : Carbon::create($date->year - 1, 4, 1);
+        $fyEnd = $fyStart->copy()->addYear()->subDay();
+
+        return LeaveApplication::active()
+            ->where('staff_id', $staffId)
+            ->where('status', 'granted')
+            ->where('leave_type', '!=', 'unpaid')
+            ->whereBetween('leave_date', [$fyStart->format('Y-m-d'), $fyEnd->format('Y-m-d')])
+            ->count();
     }
 }

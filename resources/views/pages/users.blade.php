@@ -1,89 +1,117 @@
 @include('common.header', ['title' => 'Users'])
 
-    <!-- loader starts-->
-    <div class="loader-wrapper">
-        <div class="loader-index"> <span></span></div>
-        <svg>
-            <defs></defs>
-            <filter id="goo">
-                <fegaussianblur in="SourceGraphic" stddeviation="11" result="blur"></fegaussianblur>
-                <fecolormatrix in="blur" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo"> </fecolormatrix>
-            </filter>
-        </svg>
-    </div>
-    <!-- loader ends-->
+<!-- loader starts-->
+<div class="loader-wrapper">
+    <div class="loader-index"> <span></span></div>
+    <svg>
+        <defs></defs>
+        <filter id="goo">
+            <fegaussianblur in="SourceGraphic" stddeviation="11" result="blur"></fegaussianblur>
+            <fecolormatrix in="blur" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 19 -9" result="goo"> </fecolormatrix>
+        </filter>
+    </svg>
+</div>
+<!-- loader ends-->
 
-    <!-- tap on top starts-->
-    <div class="tap-top"><i data-feather="chevrons-up"></i></div>
-    <!-- tap on tap ends-->
+<!-- tap on top starts-->
+<div class="tap-top"><i data-feather="chevrons-up"></i></div>
+<!-- tap on tap ends-->
 
-    <!-- page-wrapper Start-->
-    <div class="page-wrapper compact-wrapper" id="pageWrapper">
+<!-- page-wrapper Start-->
+<div class="page-wrapper compact-wrapper" id="pageWrapper">
 
-        <!-- Page Header Start-->
-        @include('common.innerheader', ['title' => 'Users'])
-        <!-- Page Header Ends -->
+    <!-- Page Header Start-->
+    @include('common.innerheader', ['title' => 'Users'])
+    <!-- Page Header Ends -->
 
-        <div class="page-body-wrapper">
+    <div class="page-body-wrapper">
 
-            <!-- Page Sidebar Start-->
-            @include('common.sidebar')
-            <!-- Page Sidebar Ends-->
+        <!-- Page Sidebar Start-->
+        @include('common.sidebar')
+        <!-- Page Sidebar Ends-->
 
-            <div class="page-body">
-                <!-- Container-fluid starts-->
-                <div class="container-fluid mt-4 user-list-wrapper">
-                    <div class="card">
-                        <div class="card-header">
-                            <h5>Users</h5>
-                        </div>
-                        <div class="card-body pt-0 px-0">
-                            <div class="list-product user-list-table">
-                                <div class="table-responsive custom-scrollbar">
-                                    <table class="table" id="roles-permission">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Email</th>
-                                                <th>Creation Date</th>
-                                                <th>Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            @if(count($data->users) > 0)
-                                                @foreach($data->users as $user)
-                                                    <tr class="product-removes inbox-data">
-                                                        <td>
-                                                            <a href="user-profile.html">{{ $user->full_name }}</a>
-                                                        </td>
-                                                        <td>
-                                                            <p>{{ $user->email }}</p>
-                                                        </td>
-                                                        <td>
-                                                            <p>{{ date('d M Y, h:i A', strtotime($user->created_at)) }}</p>
-                                                        </td>
-                                                        <td><span class="badge badge-light-success">Active</span></td>
-                                                    </tr>
-                                                @endforeach
-                                            @else
-                                                <tr>
-                                                    <td colspan="4" class="text-center">No users found.</td>
+        <div class="page-body">
+            <!-- Container-fluid starts-->
+            <div class="container-fluid mt-4 user-list-wrapper">
+                <div class="card">
+                    <div class="card-header d-flex align-items-center justify-content-between">
+                        <h5>Users</h5>
+                        <a href="{{ url('users/add') }}" class="btn btn-primary btn-sm">
+                            <i data-feather="plus" style="width:14px;height:14px;"></i> Add User
+                        </a>
+                    </div>
+                    <div class="card-body pt-0 px-0">
+                        <div class="list-product user-list-table">
+                            <div class="table-responsive custom-scrollbar">
+                                <table class="table" id="roles-permission">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>Creation Date</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @if(count($data->users) > 0)
+                                            @foreach($data->users as $user)
+                                                <tr class="product-removes inbox-data">
+                                                    <td>{{ $user->full_name }}</td>
+                                                    <td>
+                                                        <p>{{ $user->email }}</p>
+                                                    </td>
+                                                    <td>
+                                                        @if($user->user_role === 'admin')
+                                                            <span class="badge badge-light-primary">Admin</span>
+                                                        @else
+                                                            <span class="badge badge-light-info">Manager</span>
+                                                        @endif
+                                                    </td>
+                                                    <td>
+                                                        <p>{{ date('d M Y, h:i A', strtotime($user->created_at)) }}</p>
+                                                    </td>
+                                                    <td><span class="badge badge-light-success">Active</span></td>
+                                                    <td>
+                                                        <div class="common-align gap-2 justify-content-start">
+                                                            <!-- Edit Icon -->
+                                                            <a class="square-white" href="{{ url('users/'.$user->id.'/edit') }}">
+                                                                <svg>
+                                                                    <use href="{{ asset('assets/svg/icon-sprite.svg#edit-content') }}"></use>
+                                                                </svg>
+                                                            </a>
+                                                            @if(auth()->user()->user_role === 'admin' && auth()->id() !== $user->id)
+                                                                <!-- Delete Icon -->
+                                                                <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 user-delete-btn" title="Delete" data-id="{{ $user->id }}" data-name="{{ $user->full_name }}">
+                                                                    <svg>
+                                                                        <use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use>
+                                                                    </svg>
+                                                                </button>
+                                                            @endif
+                                                        </div>
+                                                    </td>
                                                 </tr>
-                                            @endif
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            @endforeach
+                                        @else
+                                            <tr>
+                                                <td colspan="6" class="text-center">No users found.</td>
+                                            </tr>
+                                        @endif
+                                    </tbody>
+                                </table>
                             </div>
-                            <div class="pagination-wrapper px-4 mt-3">
-                                {{ $data->users->links() }}
-                            </div>
+                        </div>
+                        <div class="pagination-wrapper px-4 mt-3">
+                            {{ $data->users->links() }}
                         </div>
                     </div>
                 </div>
-                <!-- Container-fluid Ends-->
             </div>
+            <!-- Container-fluid Ends-->
         </div>
     </div>
+</div>
 
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">

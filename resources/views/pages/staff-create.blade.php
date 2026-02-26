@@ -78,8 +78,8 @@
                                     <div class="col-md-4"><label class="form-label mb-1">IFSC Code</label><input type="text" class="form-control form-control-sm" id="hrmsF_ifsc"></div>
                                     <div class="col-md-4"><label class="form-label mb-1">Basic Monthly Salary</label><input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_salary" value="0"></div>
                                     <div class="col-md-4">
-                                        <label class="form-label mb-1">PF %</label>
-                                        <input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_pfPct" value="12">
+                                        <label class="form-label mb-1">PF</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_pfAmount" value="0">
                                     </div>
                                 </div>
                             </div>
@@ -223,7 +223,7 @@ jQuery(function(){
         formData.append('ot_max_hours', jQuery('#hrmsF_otHours').val());
         formData.append('ot_max_minutes', jQuery('#hrmsF_otMin').val());
         formData.append('pf_enabled', '1');
-        formData.append('pf_percentage', jQuery('#hrmsF_pfPct').val());
+        formData.append('pf_amount', jQuery('#hrmsF_pfAmount').val());
 
         var thumbFile = jQuery('#hrmsF_thumbnail')[0].files[0];
         if(thumbFile){

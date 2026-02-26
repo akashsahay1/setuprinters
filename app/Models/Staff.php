@@ -12,7 +12,7 @@ class Staff extends Model
         'full_name', 'phone_number', 'phone_number_2', 'email', 'address',
         'profile_photo', 'qr_code', 'group_id', 'account_name', 'bank_account', 'ifsc_code',
         'basic_salary', 'wage_calc_type', 'shift_hours', 'ot_type',
-        'ot_max_hours', 'ot_max_minutes', 'pf_enabled', 'pf_percentage',
+        'ot_max_hours', 'ot_max_minutes', 'pf_enabled', 'pf_amount',
         'is_deleted',
     ];
 
@@ -20,7 +20,7 @@ class Staff extends Model
         'is_deleted' => 'boolean',
         'pf_enabled' => 'boolean',
         'basic_salary' => 'decimal:2',
-        'pf_percentage' => 'decimal:2',
+        'pf_amount' => 'decimal:2',
         'group_id' => 'integer',
         'shift_hours' => 'integer',
         'ot_max_hours' => 'integer',

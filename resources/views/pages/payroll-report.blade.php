@@ -103,10 +103,10 @@
                                         <th style="width:30px;"></th>
                                         <th>Department</th>
                                         <th>Name</th>
-                                        <th class="text-center">Basic</th>
+                                        <th class="text-center">Days in Month</th>
                                         <th class="text-center">Absent</th>
-                                        <th class="text-center">Advance</th>
                                         <th class="text-center">Final Pay</th>
+                                        <th class="text-center">Advance</th>
                                         <th class="text-center">Paid Cash</th>
                                     </tr>
                                 </thead>
@@ -126,10 +126,10 @@
                                         <th class="text-center">Absent</th>
                                         <th class="text-center">Absent Ded</th>
                                         <th class="text-center">OT Days</th>
+                                        <th class="text-center">Final Pay</th>
                                         <th class="text-center">OT Amount</th>
                                         <th class="text-center">Advance</th>
                                         <th class="text-center">PF</th>
-                                        <th class="text-center">Final Pay</th>
                                         <th class="text-center">Paid Bank</th>
                                         <th class="text-center">Paid Cash</th>
                                     </tr>
@@ -281,7 +281,7 @@ jQuery(function(){
             var absentDed    = r2(daysAbsent * oneDaySalary);
             var daysOt       = parseInt(att.days_overtime) || 0;
             var otAmount     = parseFloat(att.total_ot) || 0;
-            var paidPf       = s.pf_enabled ? r2(basicAmount * (parseFloat(s.pf_percentage) || 0) / 100) : 0;
+            var paidPf       = s.pf_enabled ? r2(parseFloat(s.pf_amount) || 0) : 0;
             var advance      = parseFloat(prev.advance_amount) || 0;
             var paidCash     = parseFloat(prev.paid_cash) || 0;
             var finalPay     = r2(basicAmount - absentDed + otAmount - advance - paidPf);
@@ -312,10 +312,10 @@ jQuery(function(){
             html += '<td class="dt-control"></td>';
             html += '<td>'+row.dept+'</td>';
             html += '<td>'+row.name+'</td>';
-            html += '<td class="text-center">'+row.basic.toFixed(2)+'</td>';
+            html += '<td class="text-center">'+row.daysInMonth+'</td>';
             html += '<td class="text-center">'+row.absent+'</td>';
-            html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-advance pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.advance.toFixed(2)+'" style="width:90px;"></td>';
             html += '<td class="text-center fw-bold pr-final">'+row.finalPay.toFixed(2)+'</td>';
+            html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-advance pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.advance.toFixed(2)+'" style="width:90px;"></td>';
             html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-cash pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.paidCash.toFixed(2)+'" style="width:90px;"></td>';
             html += '</tr>';
         });
@@ -331,7 +331,7 @@ jQuery(function(){
             + '<div class="child-grid">'
             + '<div class="child-item"><label>Account No</label><span>'+row.account+'</span></div>'
             + '<div class="child-item"><label>1 Day Salary</label><span>'+row.dailySal.toFixed(2)+'</span></div>'
-            + '<div class="child-item"><label>Days in Month</label><span>'+row.daysInMonth+'</span></div>'
+            + '<div class="child-item"><label>Basic</label><span>'+row.basic.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>Absent Deduction</label><span>'+row.absentDed.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>OT Days</label><span>'+row.otDays+'</span></div>'
             + '<div class="child-item"><label>OT Amount</label><span>'+row.otAmount.toFixed(2)+'</span></div>'
@@ -614,10 +614,10 @@ jQuery(function(){
                 html += '<td class="text-center">' + row.absent + '</td>';
                 html += '<td class="text-center">' + row.absentDed.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.otDays + '</td>';
+                html += '<td class="text-center fw-bold">' + row.finalPay.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.otAmount.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.advance.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.pf.toFixed(2) + '</td>';
-                html += '<td class="text-center fw-bold">' + row.finalPay.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.paidBank.toFixed(2) + '</td>';
                 html += '<td class="text-center">' + row.paidCash.toFixed(2) + '</td>';
             } else {
@@ -637,10 +637,10 @@ jQuery(function(){
         foot += '<td class="text-center">' + r2(totals.absent) + '</td>';
         foot += '<td class="text-center">' + r2(totals.absentDed).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + totals.otDays + '</td>';
+        foot += '<td class="text-center fw-bold">' + r2(totals.finalPay).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + r2(totals.otAmount).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + r2(totals.advance).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + r2(totals.pf).toFixed(2) + '</td>';
-        foot += '<td class="text-center fw-bold">' + r2(totals.finalPay).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + r2(totals.paidBank).toFixed(2) + '</td>';
         foot += '<td class="text-center">' + r2(totals.paidCash).toFixed(2) + '</td>';
         foot += '</tr>';
@@ -654,7 +654,7 @@ jQuery(function(){
         if(!yearlyData.length) return;
         var fy = jQuery('#hrmsPrFy').val();
         var csv = 'Yearly Payroll Report - ' + yearlyStaffName + ' - FY ' + fy + '\n';
-        csv += 'Month,Basic,1 Day Salary,Days Absent,Absent Ded,OT Days,OT Amount,Advance,PF,Final Pay,Paid Bank,Paid Cash\n';
+        csv += 'Month,Basic,1 Day Salary,Days Absent,Absent Ded,OT Days,Final Pay,OT Amount,Advance,PF,Paid Bank,Paid Cash\n';
 
         var totals = { basic:0, absent:0, absentDed:0, otDays:0, otAmount:0, advance:0, pf:0, finalPay:0, paidBank:0, paidCash:0 };
 
@@ -663,9 +663,10 @@ jQuery(function(){
                 csv += '"' + r.monthLabel + '",';
                 csv += r.basic.toFixed(2) + ',' + r.dailySal.toFixed(2) + ',';
                 csv += r.absent + ',' + r.absentDed.toFixed(2) + ',';
-                csv += r.otDays + ',' + r.otAmount.toFixed(2) + ',';
+                csv += r.otDays + ',' + r.finalPay.toFixed(2) + ',';
+                csv += r.otAmount.toFixed(2) + ',';
                 csv += r.advance.toFixed(2) + ',' + r.pf.toFixed(2) + ',';
-                csv += r.finalPay.toFixed(2) + ',' + r.paidBank.toFixed(2) + ',';
+                csv += r.paidBank.toFixed(2) + ',';
                 csv += r.paidCash.toFixed(2) + '\n';
 
                 totals.basic += r.basic;
@@ -684,8 +685,9 @@ jQuery(function(){
         });
 
         csv += 'TOTAL,' + r2(totals.basic).toFixed(2) + ',--,' + r2(totals.absent) + ',';
-        csv += r2(totals.absentDed).toFixed(2) + ',' + totals.otDays + ',' + r2(totals.otAmount).toFixed(2) + ',';
-        csv += r2(totals.advance).toFixed(2) + ',' + r2(totals.pf).toFixed(2) + ',' + r2(totals.finalPay).toFixed(2) + ',';
+        csv += r2(totals.absentDed).toFixed(2) + ',' + totals.otDays + ',';
+        csv += r2(totals.finalPay).toFixed(2) + ',' + r2(totals.otAmount).toFixed(2) + ',';
+        csv += r2(totals.advance).toFixed(2) + ',' + r2(totals.pf).toFixed(2) + ',';
         csv += r2(totals.paidBank).toFixed(2) + ',' + r2(totals.paidCash).toFixed(2) + '\n';
 
         var blob = new Blob([csv], {type: 'text/csv'});

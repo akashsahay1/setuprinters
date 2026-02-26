@@ -81,8 +81,8 @@
                                     <div class="col-md-4"><label class="form-label mb-1">IFSC Code</label><input type="text" class="form-control form-control-sm" id="hrmsF_ifsc" value="{{ $staff->ifsc_code }}"></div>
                                     <div class="col-md-4"><label class="form-label mb-1">Basic Monthly Salary</label><input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_salary" value="{{ $staff->basic_salary }}"></div>
                                     <div class="col-md-4">
-                                        <label class="form-label mb-1">PF %</label>
-                                        <input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_pfPct" value="{{ $staff->pf_percentage ?? 12 }}">
+                                        <label class="form-label mb-1">PF</label>
+                                        <input type="number" step="0.01" class="form-control form-control-sm" id="hrmsF_pfAmount" value="{{ $staff->pf_amount ?? 0 }}">
                                     </div>
                                 </div>
                             </div>
@@ -230,7 +230,7 @@ jQuery(function(){
         formData.append('ifsc_code', jQuery('#hrmsF_ifsc').val());
         formData.append('basic_salary', jQuery('#hrmsF_salary').val());
         formData.append('pf_enabled', '1');
-        formData.append('pf_percentage', jQuery('#hrmsF_pfPct').val());
+        formData.append('pf_amount', jQuery('#hrmsF_pfAmount').val());
         formData.append('wage_calc_type', jQuery('#hrmsF_wageType').val());
         formData.append('shift_hours', jQuery('#hrmsF_shiftHours').val());
         formData.append('ot_type', jQuery('#hrmsF_otType').val());

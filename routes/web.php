@@ -12,6 +12,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('dashboard', [PageController::class, 'dashboard'])->name('dashboard');
     Route::get('users', [PageController::class, 'users'])->name('users');
     Route::get('users/add', [PageController::class, 'adduser'])->name('adduser');
+    Route::get('users/{id}/edit', [PageController::class, 'editUser'])->name('users.edit');
     Route::get('settings', [PageController::class, 'settings'])->name('settings');
     Route::get('reporting', [PageController::class, 'reporting'])->name('reporting');
     Route::get('staffs', [PageController::class, 'staffs'])->name('staffs');

@@ -164,7 +164,7 @@ function getPayroll(sid){
         otHours: s.ot_max_hours || 1,
         otMin: s.ot_max_minutes || 30,
         pfEnabled: s.pf_enabled,
-        pfPct: s.pf_percentage || 12,
+        pfAmount: s.pf_amount || 0,
         group: s.group ? s.group.name : '--',
         groupId: s.group_id,
     };

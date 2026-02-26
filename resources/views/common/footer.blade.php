@@ -20,6 +20,7 @@
         <script src="{{ url('assets/js/sweet-alert/sweetalert.min.js') }}"></script>
 
         @yield('js')
+        @stack('scripts')
 
         <!-- Plugins JS Ends-->
         <!-- Theme js-->

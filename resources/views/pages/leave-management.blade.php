@@ -52,16 +52,11 @@
                         <div class="tab-content mt-2">
                             <!-- Pending Tab -->
                             <div class="tab-pane fade show active" id="pendingPane" role="tabpanel">
-                                <div id="bulkActions" class="d-flex align-items-center gap-2 mb-2" style="display:none!important;">
-                                    <span id="bulkCount" class="text-muted me-1">0 selected</span>
-                                    <button class="btn btn-success btn-sm" id="bulkApproveBtn">Approve Selected</button>
-                                    <button class="btn btn-danger btn-sm" id="bulkRejectBtn">Reject Selected</button>
-                                </div>
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-sm">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width:40px;"><input type="checkbox" class="form-check-input" id="selectAllPending"></th>
+                                                <th style="width:40px;"></th>
                                                 <th>Name</th>
                                                 <th>Date</th>
                                                 <th>Type</th>
@@ -129,6 +124,8 @@
 "use strict";
 
 var CSRF = '{{ csrf_token() }}';
+var paidLeaveCounts = {};
+var fyLabel = '';
 
 function formatDate(dateStr) {
     if (!dateStr) return '-';
@@ -157,32 +154,10 @@ function getActiveStatus() {
     return activeTab.data('status') || 'pending';
 }
 
-function updateBulkBar() {
-    var count = jQuery('.leave-check:checked').length;
-    if (count > 0) {
-        jQuery('#bulkActions').removeClass('d-none').css('display', '');
-        jQuery('#bulkActions').attr('style', '');
-    } else {
-        jQuery('#bulkActions').css('display', 'none');
-    }
-    jQuery('#bulkCount').text(count + ' selected');
-}
-
-function getSelectedIds() {
-    var ids = [];
-    jQuery('.leave-check:checked').each(function() { ids.push(jQuery(this).val()); });
-    return ids;
-}
-
 function fetchLeaves(status) {
     var bodyId = '#' + status + 'Body';
     var colSpan = status === 'pending' ? 6 : 5;
     jQuery(bodyId).html('<tr><td colspan="' + colSpan + '" class="text-center text-muted">Loading...</td></tr>');
-
-    if (status === 'pending') {
-        jQuery('#selectAllPending').prop('checked', false);
-        jQuery('#bulkActions').css('display', 'none');
-    }
 
     jQuery.ajax({
         url: '/ajax',
@@ -194,23 +169,41 @@ function fetchLeaves(status) {
                 return;
             }
 
+            // Store paid leave counts and FY label
+            if (res.paid_leave_counts) paidLeaveCounts = res.paid_leave_counts;
+            if (res.fy_label) fyLabel = res.fy_label;
+
             var html = '';
             res.leaves.forEach(function(leave) {
                 var staffName = leave.staff ? leave.staff.full_name : 'Unknown';
+                var staffId = leave.staff ? leave.staff.id : 0;
+                var usedCount = paidLeaveCounts[staffId] || 0;
+                var limitReached = usedCount >= 2;
+
                 html += '<tr>';
 
                 if (status === 'pending') {
                     html += '<td><input type="checkbox" class="form-check-input leave-check" value="' + leave.id + '"></td>';
                 }
 
-                html += '<td>' + staffName + '</td>';
+                html += '<td>' + staffName;
+                if (status === 'pending') {
+                    var badgeClass = limitReached ? 'bg-danger' : 'bg-secondary';
+                    html += ' <span class="badge ' + badgeClass + '" style="font-size:0.7rem;" title="Paid leaves used in FY ' + fyLabel + '">' + usedCount + '/2 PL</span>';
+                }
+                html += '</td>';
                 html += '<td>' + formatDate(leave.leave_date) + '</td>';
                 html += '<td><span class="badge bg-info">' + ucfirst(leave.leave_type) + '</span></td>';
                 html += '<td>' + (leave.reason || '-') + '</td>';
 
                 if (status === 'pending') {
                     html += '<td>';
-                    html += '<button class="btn btn-success btn-sm approve-leave-btn me-1" data-id="' + leave.id + '">Approve</button>';
+                    if (limitReached) {
+                        html += '<button class="btn btn-secondary btn-sm me-1" disabled title="Paid leave limit (2/2) reached for FY ' + fyLabel + '">Paid</button>';
+                    } else {
+                        html += '<button class="btn btn-success btn-sm approve-leave-btn me-1" data-id="' + leave.id + '" data-mark="paid">Paid</button>';
+                    }
+                    html += '<button class="btn btn-outline-secondary btn-sm approve-leave-btn me-1" data-id="' + leave.id + '" data-mark="unpaid">Unpaid</button>';
                     html += '<button class="btn btn-danger btn-sm reject-leave-btn" data-id="' + leave.id + '">Reject</button>';
                     html += '</td>';
                 } else if (status === 'granted') {
@@ -241,108 +234,20 @@ jQuery(function(){
         fetchLeaves(status);
     });
 
-    // Select all checkbox
-    jQuery('#selectAllPending').on('change', function() {
-        jQuery('.leave-check').prop('checked', jQuery(this).is(':checked'));
-        updateBulkBar();
-    });
-
-    // Individual checkbox
-    jQuery(document).on('change', '.leave-check', function() {
-        var total = jQuery('.leave-check').length;
-        var checked = jQuery('.leave-check:checked').length;
-        jQuery('#selectAllPending').prop('checked', total > 0 && total === checked);
-        updateBulkBar();
-    });
-
-    // Bulk Approve
-    jQuery('#bulkApproveBtn').on('click', function() {
-        var ids = getSelectedIds();
-        if (!ids.length) return;
-
-        Swal.fire({
-            title: 'Approve ' + ids.length + ' leave(s)?',
-            text: 'This will grant all selected leave requests.',
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#0093FF',
-            confirmButtonText: 'Yes, approve all'
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
-
-            jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', true);
-            jQuery.ajax({
-                url: '/ajax',
-                type: 'POST',
-                data: { _token: CSRF, bulk_approve_leave: 1, leave_ids: ids },
-                success: function(res) {
-                    jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', false);
-                    if (res.status) {
-                        Swal.fire('Approved', res.message, 'success');
-                        fetchLeaves('pending');
-                        fetchLeaves('granted');
-                    } else {
-                        Swal.fire('Error', res.message || 'Failed to approve', 'error');
-                    }
-                },
-                error: function() {
-                    jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', false);
-                    Swal.fire('Error', 'Something went wrong', 'error');
-                }
-            });
-        });
-    });
-
-    // Bulk Reject
-    jQuery('#bulkRejectBtn').on('click', function() {
-        var ids = getSelectedIds();
-        if (!ids.length) return;
-
-        Swal.fire({
-            title: 'Reject ' + ids.length + ' leave(s)?',
-            text: 'This will reject all selected leave requests.',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#dc3545',
-            confirmButtonText: 'Yes, reject all'
-        }).then(function(result) {
-            if (!result.isConfirmed) return;
-
-            jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', true);
-            jQuery.ajax({
-                url: '/ajax',
-                type: 'POST',
-                data: { _token: CSRF, bulk_reject_leave: 1, leave_ids: ids },
-                success: function(res) {
-                    jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', false);
-                    if (res.status) {
-                        Swal.fire('Rejected', res.message, 'success');
-                        fetchLeaves('pending');
-                        fetchLeaves('rejected');
-                    } else {
-                        Swal.fire('Error', res.message || 'Failed to reject', 'error');
-                    }
-                },
-                error: function() {
-                    jQuery('#bulkApproveBtn, #bulkRejectBtn').prop('disabled', false);
-                    Swal.fire('Error', 'Something went wrong', 'error');
-                }
-            });
-        });
-    });
-
-    // Approve leave
+    // Approve leave (Paid / Unpaid)
     jQuery(document).on('click', '.approve-leave-btn', function() {
         var btn = jQuery(this);
         var leaveId = btn.data('id');
+        var markAs = btn.data('mark'); // 'paid' or 'unpaid'
+        var label = markAs === 'paid' ? 'Paid' : 'Unpaid';
 
         Swal.fire({
-            title: 'Approve this leave?',
-            text: 'This will grant the leave request.',
+            title: 'Approve as ' + label + '?',
+            text: markAs === 'paid' ? 'This leave will be marked as paid (counts towards 2-day FY limit).' : 'This leave will be marked as unpaid (no wage for this day).',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#0093FF',
-            confirmButtonText: 'Yes, approve it'
+            confirmButtonText: 'Yes, approve as ' + label
         }).then(function(result) {
             if (!result.isConfirmed) return;
 
@@ -350,7 +255,7 @@ jQuery(function(){
             jQuery.ajax({
                 url: '/ajax',
                 type: 'POST',
-                data: { _token: CSRF, approve_leave: 1, leave_id: leaveId },
+                data: { _token: CSRF, approve_leave: 1, leave_id: leaveId, mark_as: markAs },
                 success: function(res) {
                     btn.prop('disabled', false);
                     if (res.status) {

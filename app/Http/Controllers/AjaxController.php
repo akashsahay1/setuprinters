@@ -37,8 +37,6 @@ class AjaxController extends Controller
         if($request->has('save_user')){
             try {
                 $userData = [
-                    'user_id' => 'USR' . strtoupper(Str::random(8)),
-                    'employee_id' => $request->employee_id,
                     'full_name' => $request->full_name,
                     'email' => $request->email,
                     'user_role' => $request->user_role,
@@ -71,6 +69,45 @@ class AjaxController extends Controller
             }
         }
 
+        if($request->has('update_user')){
+            try {
+                $user = User::active()->findOrFail($request->user_id);
+
+                $user->fill([
+                    'full_name' => $request->full_name,
+                    'email' => $request->email,
+                    'user_role' => $request->user_role,
+                    'phone_number' => $request->phone_number,
+                    'phone_number_2' => $request->phone_number_2,
+                    'address' => $request->address,
+                ]);
+
+                if ($request->filled('password')) {
+                    $user->password = Hash::make($request->password);
+                }
+
+                if ($request->hasFile('profile_photo')) {
+                    $photo = $request->file('profile_photo');
+                    $filename = 'profile_' . time() . '.' . $photo->getClientOriginalExtension();
+                    $photo->move(public_path('uploads/profiles'), $filename);
+                    $user->profile_photo = 'uploads/profiles/' . $filename;
+                }
+
+                $user->save();
+
+                return response()->json([
+                    'status' => true,
+                    'message' => 'User updated successfully',
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to update user',
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
         if($request->has('update_staff')){
             try {
                 $staff = Staff::active()->findOrFail($request->staff_id);
@@ -93,7 +130,7 @@ class AjaxController extends Controller
                     'ot_max_hours' => $request->ot_max_hours,
                     'ot_max_minutes' => $request->ot_max_minutes,
                     'pf_enabled' => $request->pf_enabled === '1' || $request->pf_enabled === 'true',
-                    'pf_percentage' => $request->pf_percentage,
+                    'pf_amount' => $request->pf_amount,
                 ]);
 
                 if ($request->hasFile('thumbnail')) {
@@ -137,7 +174,7 @@ class AjaxController extends Controller
                     'ot_max_hours' => $request->ot_max_hours,
                     'ot_max_minutes' => $request->ot_max_minutes,
                     'pf_enabled' => $request->pf_enabled === '1' || $request->pf_enabled === 'true',
-                    'pf_percentage' => $request->pf_percentage,
+                    'pf_amount' => $request->pf_amount,
                     'is_deleted' => false,
                 ]);
 
@@ -225,7 +262,10 @@ class AjaxController extends Controller
         if($request->has('delete_user')){
             try {
                 $user = Auth::user();
-                if (!$user || !Hash::check($request->password, $user->password)) {
+                if (!$user || $user->user_role !== 'admin') {
+                    return response()->json(['status' => false, 'message' => 'Only administrators can delete users']);
+                }
+                if (!Hash::check($request->password, $user->password)) {
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
                 User::where('id', $request->user_id)->update(['is_deleted' => true]);
@@ -266,7 +306,7 @@ class AjaxController extends Controller
                         'ot_max_hours' => $item['otHours'] ?? null,
                         'ot_max_minutes' => $item['otMin'] ?? null,
                         'pf_enabled' => !empty($item['pfEnabled']),
-                        'pf_percentage' => $item['pfPct'] ?? null,
+                        'pf_amount' => $item['pfAmount'] ?? null,
                     ]);
                     $migrated++;
                 }
@@ -485,7 +525,30 @@ class AjaxController extends Controller
                     ->orderBy('leave_date', 'desc')
                     ->get();
 
-                return response()->json(['status' => true, 'leaves' => $leaves]);
+                // Include paid leave counts per staff for current FY
+                $now = \Carbon\Carbon::now();
+                $fyStart = $now->month >= 4
+                    ? \Carbon\Carbon::create($now->year, 4, 1)
+                    : \Carbon\Carbon::create($now->year - 1, 4, 1);
+                $fyEnd = $fyStart->copy()->addYear()->subDay();
+
+                $paidLeaveCounts = LeaveApplication::active()
+                    ->where('status', 'granted')
+                    ->where('leave_type', '!=', 'unpaid')
+                    ->whereBetween('leave_date', [$fyStart->format('Y-m-d'), $fyEnd->format('Y-m-d')])
+                    ->select('staff_id', DB::raw('COUNT(*) as cnt'))
+                    ->groupBy('staff_id')
+                    ->pluck('cnt', 'staff_id')
+                    ->toArray();
+
+                $fyLabel = $fyStart->year . '-' . $fyEnd->year;
+
+                return response()->json([
+                    'status' => true,
+                    'leaves' => $leaves,
+                    'paid_leave_counts' => $paidLeaveCounts,
+                    'fy_label' => $fyLabel,
+                ]);
             } catch (\Exception $e) {
                 return response()->json([
                     'status' => false,
@@ -505,24 +568,53 @@ class AjaxController extends Controller
                     ->whereIn('id', $ids)
                     ->get();
 
-                $count = LeaveApplication::active()
-                    ->where('status', 'pending')
-                    ->whereIn('id', $ids)
-                    ->update(['status' => 'granted']);
+                // Track paid leave counts per staff to enforce 2-day FY limit
+                $paidLeaveTracker = [];
+                $approved = 0;
+                $skipped = 0;
 
-                // Auto-update daily_attendances for approved leaves
                 foreach ($leaves as $leave) {
+                    $isPaid = $leave->leave_type !== 'unpaid';
+
+                    if ($isPaid) {
+                        $dateStr = $leave->leave_date->format('Y-m-d');
+                        if (!isset($paidLeaveTracker[$leave->staff_id])) {
+                            $paidLeaveTracker[$leave->staff_id] = $this->countPaidLeavesInFy($leave->staff_id, $dateStr);
+                        }
+                        if ($paidLeaveTracker[$leave->staff_id] >= 2) {
+                            $skipped++;
+                            continue;
+                        }
+                        $paidLeaveTracker[$leave->staff_id]++;
+                    }
+
+                    $leave->update(['status' => 'granted']);
+                    $approved++;
+
+                    // Auto-update daily_attendances
                     $staff = Staff::find($leave->staff_id);
                     $dailyWage = $staff ? ((float) $staff->basic_salary) / 26 : 0;
-                    $baseWage = ($leave->leave_type !== 'unpaid') ? round($dailyWage, 2) : 0;
+
+                    if ($isPaid) {
+                        $status = 'present';
+                        $baseWage = round($dailyWage, 2);
+                    } else {
+                        $status = 'leave';
+                        $baseWage = 0;
+                    }
 
                     DailyAttendance::where('staff_id', $leave->staff_id)
                         ->where('date', $leave->leave_date->format('Y-m-d'))
                         ->where('status', 'absent')
-                        ->update(['status' => 'leave', 'base_wage' => $baseWage]);
+                        ->update(['status' => $status, 'base_wage' => $baseWage]);
                 }
 
-                return response()->json(['status' => true, 'message' => $count . ' leave(s) approved successfully']);
+                $msg = "$approved leave(s) approved successfully";
+                if ($skipped > 0) {
+                    $msg .= ". $skipped paid leave(s) skipped (2-day FY limit reached).";
+                }
+
+                return response()->json(['status' => true, 'message' => $msg]);
             } catch (\Exception $e) {
                 return response()->json([
                     'status' => false,
@@ -556,21 +648,50 @@ class AjaxController extends Controller
                     ->where('status', 'pending')
                     ->findOrFail($request->leave_id);
 
-                $leave->update(['status' => 'granted']);
+                $markAs = $request->input('mark_as', 'unpaid'); // paid or unpaid
+
+                // Check 2-day paid leave limit per FY
+                if ($markAs === 'paid') {
+                    $paidCount = $this->countPaidLeavesInFy($leave->staff_id, $leave->leave_date->format('Y-m-d'));
+                    if ($paidCount >= 2) {
+                        $fy = $this->getFyLabel($leave->leave_date->format('Y-m-d'));
+                        return response()->json([
+                            'status' => false,
+                            'message' => "Paid leave limit (2 days) reached for FY $fy.",
+                        ]);
+                    }
+                }
+
+                // Update leave type based on manager's choice and grant
+                $leaveType = $markAs === 'paid' ? $leave->leave_type : 'unpaid';
+                if ($leaveType === 'unpaid' && $markAs === 'paid') {
+                    $leaveType = 'casual'; // If original was unpaid but manager marks paid
+                }
+                $leave->update(['status' => 'granted', 'leave_type' => $leaveType]);
 
                 // Auto-update daily_attendances if absent row exists for this date
                 $staff = Staff::find($leave->staff_id);
                 if ($staff) {
                     $dailyWage = ((float) $staff->basic_salary) / 26;
-                    $baseWage = ($leave->leave_type !== 'unpaid') ? round($dailyWage, 2) : 0;
+
+                    if ($markAs === 'paid') {
+                        // Paid leave: mark as present with wage
+                        $status = 'present';
+                        $baseWage = round($dailyWage, 2);
+                    } else {
+                        // Unpaid leave: mark as leave with zero wage
+                        $status = 'leave';
+                        $baseWage = 0;
+                    }
 
                     DailyAttendance::where('staff_id', $leave->staff_id)
                         ->where('date', $leave->leave_date->format('Y-m-d'))
                         ->where('status', 'absent')
-                        ->update(['status' => 'leave', 'base_wage' => $baseWage]);
+                        ->update(['status' => $status, 'base_wage' => $baseWage]);
                 }
 
-                return response()->json(['status' => true, 'message' => 'Leave approved successfully']);
+                $msg = $markAs === 'paid' ? 'Leave approved as Paid' : 'Leave approved as Unpaid';
+                return response()->json(['status' => true, 'message' => $msg]);
             } catch (\Exception $e) {
                 return response()->json([
                     'status' => false,
@@ -652,6 +773,21 @@ class AjaxController extends Controller
                     $scanMap[$uid][$date][$type][] = $scan->created_at;
                 }
 
+                // Pre-compute paid leave counts per staff for the FY containing this month
+                $fyStart = $month >= 4
+                    ? \Carbon\Carbon::create($year, 4, 1)
+                    : \Carbon\Carbon::create($year - 1, 4, 1);
+                $fyEnd = $fyStart->copy()->addYear()->subDay();
+
+                $paidLeaveCounts = LeaveApplication::active()
+                    ->where('status', 'granted')
+                    ->where('leave_type', '!=', 'unpaid')
+                    ->whereBetween('leave_date', [$fyStart->format('Y-m-d'), $fyEnd->format('Y-m-d')])
+                    ->select('staff_id', DB::raw('COUNT(*) as cnt'))
+                    ->groupBy('staff_id')
+                    ->pluck('cnt', 'staff_id')
+                    ->toArray();
+
                 $workingDays = 26;
                 $processed = 0;
 
@@ -687,7 +823,13 @@ class AjaxController extends Controller
                             $totalHours = round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2);
                             $status = $totalHours > 4 ? 'present' : 'half_day';
 
-                            if ($staff->wage_calc_type === 'hour_based') {
+                            if ($isSunday || $isHoliday) {
+                                // Holiday/Sunday with attendance: holiday pay + all hours as OT
+                                $baseWage = round($dailyWage, 2);
+                                $otHours  = $this->capOt($staff, $totalHours);
+                                $otWage   = round($hourlyWage * $otHours, 2);
+                                $isOt     = $otHours > 0;
+                            } elseif ($staff->wage_calc_type === 'hour_based') {
                                 $regular = min($totalHours, $shiftHours);
                                 $excess  = max(0, $totalHours - $shiftHours);
                                 $otHours = $this->capOt($staff, $excess);
@@ -701,13 +843,33 @@ class AjaxController extends Controller
                             $checkIn  = $hasIn ? $inScans[0] : null;
                             $checkOut = $hasOut ? end($outScans) : null;
                             $status   = 'half_day';
-                            $baseWage = round($dailyWage / 2, 2);
+                            $baseWage = round($dailyWage, 2);
+
+                            if ($isSunday || $isHoliday) {
+                                // Holiday/Sunday with partial scan: holiday pay + partial hours as OT
+                                $partialHours = ($checkIn && $checkOut)
+                                    ? round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2)
+                                    : round($shiftHours / 2, 2);
+                                $otHours = $this->capOt($staff, $partialHours);
+                                $otWage  = round($hourlyWage * $otHours, 2);
+                                $isOt    = $otHours > 0;
+                            }
                         } elseif (isset($leaveMap[$staff->id][$dateStr])) {
                             $leaveType = $leaveMap[$staff->id][$dateStr];
-                            $status    = 'leave';
-                            $baseWage  = ($leaveType !== 'unpaid') ? round($dailyWage, 2) : 0;
+                            $isPaid = ($leaveType !== 'unpaid') && (($paidLeaveCounts[$staff->id] ?? 0) <= 2);
+
+                            if ($isPaid) {
+                                // Paid leave within 2-day FY limit: mark as present
+                                $status   = 'present';
+                                $baseWage = round($dailyWage, 2);
+                            } else {
+                                // Unpaid leave or FY limit exceeded
+                                $status   = 'leave';
+                                $baseWage = 0;
+                            }
                         } elseif ($isSunday || $isHoliday) {
-                            $status = 'holiday';
+                            $status   = 'holiday';
+                            $baseWage = round($dailyWage, 2);
                         } else {
                             $status = 'absent';
                         }
@@ -847,7 +1009,7 @@ class AjaxController extends Controller
                 $basicSalary = (float) $staff->basic_salary;
                 $oneDaySalary = $workingDays > 0 ? round($basicSalary / $workingDays, 2) : 0;
                 $pfEnabled = (bool) $staff->pf_enabled;
-                $pfPct = (float) ($staff->pf_percentage ?? 0);
+                $pfAmount = (float) ($staff->pf_amount ?? 0);
 
                 // FY months: Apr(startYear) to Mar(endYear)
                 $fyMonths = [];
@@ -929,7 +1091,7 @@ class AjaxController extends Controller
                     $absentDed = round($daysAbsent * $oneDaySalary, 2);
                     $daysOt = (int) $att->days_overtime;
                     $otAmount = round((float) $att->total_ot, 2);
-                    $paidPf = $pfEnabled ? round($basicSalary * $pfPct / 100, 2) : 0;
+                    $paidPf = $pfEnabled ? round($pfAmount, 2) : 0;
                     $finalPay = round($basicSalary - $absentDed + $otAmount - $paidPf, 2);
                     $paidBank = round($finalPay, 2);
                     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $fm['month'], $fm['year']);
@@ -1080,5 +1242,28 @@ class AjaxController extends Controller
             return min($excessHours, ((float) ($staff->ot_max_minutes ?: 0)) / 60);
         }
         return $excessHours;
+    }
+
+    private function countPaidLeavesInFy(int $staffId, string $dateStr): int
+    {
+        $date = \Carbon\Carbon::parse($dateStr);
+        $fyStart = $date->month >= 4
+            ? \Carbon\Carbon::create($date->year, 4, 1)
+            : \Carbon\Carbon::create($date->year - 1, 4, 1);
+        $fyEnd = $fyStart->copy()->addYear()->subDay(); // March 31
+
+        return LeaveApplication::active()
+            ->where('staff_id', $staffId)
+            ->where('status', 'granted')
+            ->where('leave_type', '!=', 'unpaid')
+            ->whereBetween('leave_date', [$fyStart->format('Y-m-d'), $fyEnd->format('Y-m-d')])
+            ->count();
+    }
+
+    private function getFyLabel(string $dateStr): string
+    {
+        $date = \Carbon\Carbon::parse($dateStr);
+        $startYear = $date->month >= 4 ? $date->year : $date->year - 1;
+        return $startYear . '-' . ($startYear + 1);
     }
 }

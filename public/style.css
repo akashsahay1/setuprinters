@@ -604,3 +604,30 @@ a.text-primary, .text-primary {
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
+/* Profile Dropdown */
+.profile-dropdown {
+    width: auto;
+    min-width: 180px;
+}
+
+.profile-dropdown li a {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.profile-dropdown li span {
+    font-size: 12px;
+}
+
+.profile-dropdown li svg {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+}
+
+/* Leave Management Checkbox */
+.leave-check {
+    border-color: #555 !important;
+}
