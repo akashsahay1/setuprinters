@@ -78,9 +78,9 @@
                                     <h6 class="mb-0">Attendance <small class="text-muted">({{ now()->format('d M Y') }})</small></h6>
                                     <span class="badge bg-primary text-white" id="scanCount">{{ $todayScans->count() }} scans</span>
                                 </div>
-                                <div class="card-body pt-0 px-0">
+                                <div class="card-body">
                                     <div class="table-responsive custom-scrollbar">
-                                        <table class="table mb-0">
+                                        <table class="table mb-0" id="dashboardTable">
                                             <thead>
                                                 <tr>
                                                     <th style="width:10%;">Photo</th>
@@ -93,14 +93,14 @@
                                                 @forelse($todayScans as $scan)
                                                     <tr data-staff-id="{{ $scan->staff ? $scan->staff->id : '' }}" data-group-id="{{ $scan->staff ? $scan->staff->group_id : '' }}">
                                                         <td>
-                                                            <img src="{{ ($scan->staff && $scan->staff->profile_photo) ? asset($scan->staff->profile_photo) : asset('assets/images/test/user_profile_default.png') }}" alt="" class="scan-photo" data-name="{{ $scan->staff ? $scan->staff->full_name : 'Unknown' }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;">
+                                                            <img src="{{ ($scan->staff && $scan->selfie) ? asset(str_replace('uploads/selfies/', 'uploads/selfies/thumbs/', $scan->selfie)) : asset('assets/images/test/user_profile_default.png') }}" alt="" class="scan-photo" data-name="{{ $scan->staff ? $scan->staff->full_name : 'Unknown' }}" data-full="{{ ($scan->staff && $scan->selfie) ? asset($scan->selfie) : '' }}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;cursor:pointer;">
                                                         </td>
                                                         <td>{{ $scan->staff ? $scan->staff->full_name : 'Unknown' }}</td>
                                                         <td>{{ $scan->barcode }}</td>
                                                         <td>{{ $scan->created_at->format('d-m-Y H:i A') }}</td>
                                                     </tr>
                                                 @empty
-                                                    <tr><td colspan="4" class="text-center py-4 text-muted">No attendance scans for today.</td></tr>
+                                                    <tr><td  class="text-center py-4 text-muted">No attendance scans for today.</td><td></td><td></td><td></td></tr>
                                                 @endforelse
                                             </tbody>
                                         </table>
@@ -131,7 +131,9 @@
                             padding: 12px 15px;
                             vertical-align: middle;
                         }
-
+                        #dashboardTable_wrapper .dataTables_paginate {
+                            margin-top: 20px;
+                        }
                     </style>
 
                 </div>
@@ -164,6 +166,14 @@ jQuery(function(){
         defaultDate: [new Date()],
         allowInput: false,
         locale: { rangeSeparator: ' - ' }
+    });
+
+    var dashTable = jQuery('#dashboardTable').DataTable({
+        pageLength: 30,
+        order: [[3, 'desc']],
+        columnDefs: [
+            { orderable: false, targets: [0] }
+        ]
     });
 
     // ══════════════════════════════════
@@ -257,7 +267,15 @@ jQuery(function(){
                 html += '</tr>';
             });
         }
+        if(dashTable){ dashTable.destroy(); }
         jQuery('#staffTableBody').html(html);
+        dashTable = jQuery('#dashboardTable').DataTable({
+            pageLength: 30,
+            order: [[3, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [0] }
+            ]
+        });
         jQuery('#scanCount').text(scans.length + ' scans');
     }
 
@@ -278,7 +296,7 @@ jQuery(function(){
     // IMAGE PREVIEW MODAL
     // ══════════════════════════════════
     jQuery('#staffTableBody').on('click', '.scan-photo', function(){
-        var src = jQuery(this).attr('src');
+        var src = jQuery(this).data('full') || jQuery(this).attr('src');
         var name = jQuery(this).data('name') || '';
         jQuery('#imagePreviewImg').attr('src', src);
         jQuery('#imagePreviewName').text(name);

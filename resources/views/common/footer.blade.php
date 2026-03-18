@@ -19,6 +19,9 @@
         <!-- Sweet Alert -->
         <script src="{{ url('assets/js/sweet-alert/sweetalert.min.js') }}"></script>
 
+        <!-- DataTables -->
+        <script src="{{ url('assets/js/datatable/datatables/jquery.dataTables.min.js') }}"></script>
+
         @yield('js')
         @stack('scripts')
 

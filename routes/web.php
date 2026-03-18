@@ -22,5 +22,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('leave-management', [PageController::class, 'leaveManagement'])->name('leaveManagement');
     Route::get('attendance', [PageController::class, 'attendance'])->name('attendance');
     Route::get('holidays', [PageController::class, 'holidays'])->name('holidays');
+    Route::get('attendance-calc', [PageController::class, 'attendanceCalc'])->name('attendanceCalc');
+    Route::get('edit-attendance', [PageController::class, 'editAttendance'])->name('editAttendance');
 
 });

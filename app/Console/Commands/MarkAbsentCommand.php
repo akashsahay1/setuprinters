@@ -11,12 +11,12 @@ use Illuminate\Console\Command;
 
 class MarkAbsentCommand extends Command
 {
-    protected $signature = 'attendance:mark-absent {--date= : Date to process (Y-m-d), defaults to today}';
+    protected $signature = 'attendance:mark-absent {--date= : Date to process (Y-m-d), defaults to yesterday}';
     protected $description = 'Mark staff without scans as absent/holiday/leave and insert into daily_attendances';
 
     public function handle()
     {
-        $dateStr = $this->option('date') ?: Carbon::today()->format('Y-m-d');
+        $dateStr = $this->option('date') ?: Carbon::yesterday()->format('Y-m-d');
         $dateObj = Carbon::parse($dateStr);
         $isSunday = ($dateObj->dayOfWeek === 0);
 
@@ -56,6 +56,10 @@ class MarkAbsentCommand extends Command
             ->keyBy('staff_id');
 
         $workingDays = 26;
+        $fyStart = $dateObj->month >= 4
+            ? Carbon::create($dateObj->year, 4, 1)
+            : Carbon::create($dateObj->year - 1, 4, 1);
+        $fyEnd = $fyStart->copy()->addYear()->subDay();
         $marked = 0;
 
         foreach ($unprocessedStaff as $staff) {
@@ -63,11 +67,24 @@ class MarkAbsentCommand extends Command
 
             if ($isSunday || $isHoliday) {
                 $dayStatus = 'holiday';
-                $baseWage  = 0;
+                $baseWage  = round($dailyWage, 2);
             } elseif (isset($leaveMap[$staff->id])) {
-                $dayStatus = 'leave';
                 $leaveApp  = $leaveMap[$staff->id];
-                $baseWage  = ($leaveApp->leave_type !== 'unpaid') ? round($dailyWage, 2) : 0;
+                $paidLeaveCount = LeaveApplication::active()
+                    ->where('staff_id', $staff->id)
+                    ->where('status', 'granted')
+                    ->where('leave_type', '!=', 'unpaid')
+                    ->whereBetween('leave_date', [$fyStart->format('Y-m-d'), $fyEnd->format('Y-m-d')])
+                    ->count();
+                $isPaid = ($leaveApp->leave_type !== 'unpaid') && ($paidLeaveCount <= 2);
+
+                if ($isPaid) {
+                    $dayStatus = 'present';
+                    $baseWage  = round($dailyWage, 2);
+                } else {
+                    $dayStatus = 'leave';
+                    $baseWage  = 0;
+                }
             } else {
                 $dayStatus = 'absent';
                 $baseWage  = 0;
@@ -82,6 +99,7 @@ class MarkAbsentCommand extends Command
                 'status'      => $dayStatus,
                 'is_ot'       => false,
                 'ot_hours'    => 0,
+                'ot_count'    => 0,
                 'base_wage'   => $baseWage,
                 'ot_wage'     => 0,
                 'is_deleted'  => false,

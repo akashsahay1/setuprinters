@@ -13,10 +13,6 @@
 </div>
 <!-- loader ends-->
 
-<!-- tap on top starts-->
-<div class="tap-top"><i data-feather="chevrons-up"></i></div>
-<!-- tap on tap ends-->
-
 <!-- page-wrapper Start-->
 <div class="page-wrapper compact-wrapper" id="pageWrapper">
 
@@ -34,9 +30,15 @@
             <div class="container-fluid mt-4">
 
                 <!-- Action buttons -->
-                <div class="d-flex gap-2 mb-3">
+                <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
                     <a href="{{ url('staffs/create') }}" class="btn btn-primary">Add Staff</a>
                     <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#manageGroupsModal">Manage Groups</button>
+                    <select class="form-select" id="groupFilter" style="width:auto;height:auto;padding:0.625rem 2.25rem;" onchange="window.location.href = this.value ? '{{ url('staffs') }}?group='+this.value : '{{ url('staffs') }}'">
+                        <option value="">All Groups</option>
+                        @foreach($groups as $g)
+                        <option value="{{ $g->id }}" {{ (isset($selectedGroup) && $selectedGroup == $g->id) ? 'selected' : '' }}>{{ $g->name }}</option>
+                        @endforeach
+                    </select>
                     <button class="btn btn-success" id="staffCsvBtn">CSV</button>
                 </div>
 
@@ -52,9 +54,9 @@
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
-                            <div class="card-body pt-0 px-0">
+                            <div class="card-body">
                                 <div class="table-responsive custom-scrollbar">
-                                    <table class="table mb-0">
+                                    <table class="table mb-0" id="staffTable">
                                         <thead>
                                             <tr>
                                                 <th style="width:60px;">Image</th>
@@ -78,14 +80,16 @@
                                                             <a class="square-white" href="{{ url('staffs/'.$s->id.'/edit') }}" title="Edit">
                                                                 <svg><use href="{{ asset('assets/svg/icon-sprite.svg#edit-content') }}"></use></svg>
                                                             </a>
-                                                            <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 staff-delete-btn" data-id="{{ $s->id }}" data-name="{{ $s->full_name }}" title="Delete">
-                                                                <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
-                                                            </button>
+                                                            @if(auth()->user()->user_role !== 'manager')
+                                                                <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 staff-delete-btn" data-id="{{ $s->id }}" data-name="{{ $s->full_name }}" title="Delete">
+                                                                    <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
+                                                                </button>
+                                                            @endif
                                                         </div>
                                                     </td>
                                                 </tr>
                                             @empty
-                                                <tr><td colspan="7" class="text-center py-4">No staff found.</td></tr>
+                                                <tr><td colspan="5" class="text-center py-4">No staff found.</td></tr>
                                             @endforelse
                                         </tbody>
                                     </table>
@@ -95,15 +99,11 @@
                     </div>
                 </div>
 
-                <!-- Pagination -->
-                @if($staffList->hasPages())
-                <div style="padding-top:15px;padding-bottom:30px;">
-                    <div class="d-flex justify-content-between align-items-center px-3">
-                        <small class="text-muted">Showing {{ $staffList->firstItem() }}–{{ $staffList->lastItem() }} of {{ $staffList->total() }}</small>
-                        <div class="staff-pagination">{{ $staffList->links() }}</div>
-                    </div>
-                </div>
                 <style>
+                    #staffTable_wrapper .dataTables_info,
+                    #staffTable_wrapper .dataTables_paginate {
+                        padding: 12px 15px;
+                    }
                     .card .table th,
                     .card .table td {
                         padding: 12px 15px;
@@ -139,28 +139,7 @@
                         height: 16px;
                         fill: rgba(82, 82, 108, 0.8);
                     }
-                    .staff-pagination p { display: none !important; }
-                    .staff-pagination .page-link {
-                        color: var(--theme-primary);
-                        border: none;
-                    }
-                    .staff-pagination .page-link:hover {
-                        color: #fff;
-                        background-color: var(--theme-primary);
-                        border: none;
-                    }
-                    .staff-pagination .page-item.active .page-link {
-                        background-color: var(--theme-primary);
-                        border: none;
-                        color: #fff;
-                    }
-                    .staff-pagination .page-item.disabled .page-link {
-                        color: var(--theme-primary);
-                        opacity: 0.5;
-                        border: none;
-                    }
                 </style>
-                @endif
 
             </div>
         </div>{{-- /page-body --}}
@@ -211,9 +190,11 @@
                             <button type="button" class="square-white border-0 bg-transparent p-0 group-save-btn d-none" title="Save">
                                 <svg><use href="{{ asset('assets/svg/icon-sprite.svg#checked1') }}"></use></svg>
                             </button>
-                            <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 group-del-btn" title="Delete">
-                                <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
-                            </button>
+                            @if(auth()->user()->user_role !== 'manager')
+                                <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 group-del-btn" title="Delete">
+                                    <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
+                                </button>
+                            @endif
                         </div>
                     </li>
                     @endforeach
@@ -257,6 +238,18 @@ var AJAX_URL = '{{ url("ajax") }}';
 
 jQuery(function(){
 
+
+    @if(count($staffList) > 0)
+        // --- DataTables Init ---
+        var table = jQuery('#staffTable').DataTable({
+            pageLength: 30,
+            order: [[1, 'asc']],
+            columnDefs: [
+                { orderable: false, targets: [0, 4] }
+            ]
+        });
+    @endif
+
     // --- Image Preview ---
     jQuery('table.table').on('click', '.staff-photo', function(){
         var src = jQuery(this).attr('src');
@@ -279,7 +272,9 @@ jQuery(function(){
                     + '<div class="common-align gap-2">'
                     + '<button type="button" class="square-white border-0 bg-transparent p-0 group-edit-btn" title="Edit"><svg><use href="{{ asset("assets/svg/icon-sprite.svg#edit-content") }}"></use></svg></button>'
                     + '<button type="button" class="square-white border-0 bg-transparent p-0 group-save-btn d-none" title="Save"><svg><use href="{{ asset("assets/svg/icon-sprite.svg#checked1") }}"></use></svg></button>'
+                    @if(auth()->user()->user_role !== 'manager')
                     + '<button type="button" class="square-white trash-7 border-0 bg-transparent p-0 group-del-btn" title="Delete"><svg><use href="{{ asset("assets/svg/icon-sprite.svg#trash1") }}"></use></svg></button>'
+                    @endif
                     + '</div></li>';
                 jQuery('#groupsList').append(li);
                 jQuery('#newGroupName').val('');
@@ -339,19 +334,20 @@ jQuery(function(){
         setTimeout(function(){ jQuery('#groupMsg').html(''); }, 3000);
     }
 
-    // --- CSV Export ---
+    // --- CSV Export (all rows via DataTables API) ---
     jQuery('#staffCsvBtn').on('click', function(){
         var rows = [];
-        jQuery('table.table tbody tr').each(function(){
+        table.rows().every(function(){
+            var $tr = jQuery(this.node());
             var cols = [];
-            jQuery(this).find('td').each(function(i){
-                if(i === 0 || i === 6) return; // skip thumbnail & actions
+            $tr.find('td').each(function(i){
+                if(i === 0 || i === 4) return; // skip image & actions
                 cols.push('"' + jQuery(this).text().trim().replace(/"/g, '""') + '"');
             });
             if(cols.length) rows.push(cols.join(','));
         });
         if(!rows.length) return;
-        var csv = 'Name,Phone,QR Code,Group,Salary\n' + rows.join('\n');
+        var csv = 'Name,Phone,Group\n' + rows.join('\n');
         var blob = new Blob([csv], {type:'text/csv'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);

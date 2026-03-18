@@ -33,6 +33,7 @@
         <div class="page-body">
             <!-- Container-fluid starts-->
             <div class="container-fluid mt-4">
+                @if(auth()->user()->user_role !== 'manager')
                 <div class="row">
                     <div class="col-12">
                         <div class="card">
@@ -56,6 +57,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
                 <div class="row mt-3">
                     <div class="col-md-4">
                         <div class="card">
@@ -77,12 +79,23 @@
                             </div>
                         </div>
                     </div>
+                    <div class="col-md-4">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="mb-3">Edit Attendance</h5>
+                                <a href="{{ url('edit-attendance') }}" class="btn btn-purple">
+                                    Edit Attendance
+                                </a>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+@if(auth()->user()->user_role !== 'manager')
 <!-- Purge Data Confirmation Modal -->
 <div class="modal fade" id="purgeConfirmModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -113,6 +126,7 @@
         </div>
     </div>
 </div>
+@endif
 
 @section('js')
 <script>
@@ -463,33 +477,83 @@ jQuery(document).ready(function() {
         }
         var fy = jQuery('#purgeFySelect').val();
         var $btn = jQuery(this);
-        $btn.prop('disabled', true).text('Purging...');
-        jQuery.post('{{ url("ajax") }}', {
-            purge_fy_data: 1,
-            financial_year: fy,
-            password: password,
-            _token: '{{ csrf_token() }}'
-        }, function(res){
-            $btn.prop('disabled', false).text('Purge Data');
-            if(res.status){
-                jQuery('#purgeConfirmModal').modal('hide');
-                var d = res.deleted;
-                var msg = 'Deleted: ' + d.holidays + ' holidays, ' + d.attendances + ' attendance records, ' + d.scans + ' scans, ' + d.leaves + ' leaves, ' + d.payroll + ' payroll records.';
-                showToast('success', msg);
-                // Remove the FY from dropdown
-                jQuery('#purgeFySelect option[value="'+fy+'"]').remove();
-                jQuery('#purgeFySelect').val('');
-                jQuery('#purgeDataBtn').prop('disabled', true);
-                if(jQuery('#purgeFySelect option').length <= 1){
-                    jQuery('#purgeFySelect').closest('.d-flex').replaceWith('<p class="text-muted mb-0">No past financial year data available to purge.</p>');
+        $btn.prop('disabled', true).text('Downloading backup...');
+
+        // Step 1: Download full DB backup via native XHR (jQuery can't handle blob responses)
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', '{{ url("ajax") }}', true);
+        xhr.responseType = 'blob';
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-CSRF-TOKEN', '{{ csrf_token() }}');
+        xhr.onload = function() {
+            console.log('XHR status:', xhr.status, 'response type:', typeof xhr.response, 'size:', xhr.response ? xhr.response.size : 0);
+            if (xhr.status === 200 && xhr.response && xhr.response.size > 0) {
+                var blob = xhr.response;
+                var filename = 'setuprinters_db_backup_' + new Date().toISOString().slice(0, 10) + '.zip';
+                var disposition = xhr.getResponseHeader('Content-Disposition');
+                if (disposition && disposition.indexOf('filename=') !== -1) {
+                    filename = disposition.split('filename=')[1].replace(/['"]/g, '').trim();
                 }
+                var url = window.URL.createObjectURL(blob);
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+
+                // Step 2: Now purge
+                $btn.text('Purging...');
+                jQuery.post('{{ url("ajax") }}', {
+                    purge_fy_data: 1,
+                    financial_year: fy,
+                    password: password,
+                    _token: '{{ csrf_token() }}'
+                }, function(res){
+                    $btn.prop('disabled', false).text('Purge Data');
+                    if(res.status){
+                        jQuery('#purgeConfirmModal').modal('hide');
+                        var d = res.deleted;
+                        var msg = 'Deleted: ' + d.holidays + ' holidays, ' + d.attendances + ' attendance records, ' + d.scans + ' scans, ' + d.leaves + ' leaves, ' + d.payroll + ' payroll records.';
+                        showToast('success', msg);
+                        jQuery('#purgeFySelect option[value="'+fy+'"]').remove();
+                        jQuery('#purgeFySelect').val('');
+                        jQuery('#purgeDataBtn').prop('disabled', true);
+                        if(jQuery('#purgeFySelect option').length <= 1){
+                            jQuery('#purgeFySelect').closest('.d-flex').replaceWith('<p class="text-muted mb-0">No past financial year data available to purge.</p>');
+                        }
+                    } else {
+                        jQuery('#purgeError').text(res.message || 'Failed to purge data.').show();
+                    }
+                }).fail(function(){
+                    $btn.prop('disabled', false).text('Purge Data');
+                    jQuery('#purgeError').text('An error occurred. Please try again.').show();
+                });
             } else {
-                jQuery('#purgeError').text(res.message || 'Failed to purge data.').show();
+                // Try to read the response as text to see error details
+                if (xhr.response && xhr.response.size > 0) {
+                    var reader = new FileReader();
+                    reader.onload = function() { console.log('Error response:', reader.result); };
+                    reader.readAsText(xhr.response);
+                }
+                $btn.prop('disabled', false).text('Purge Data');
+                jQuery('#purgeError').text('Failed to download backup (HTTP ' + xhr.status + '). Purge cancelled.').show();
             }
-        }).fail(function(){
+        };
+        xhr.onerror = function() {
+            console.log('XHR onerror triggered');
             $btn.prop('disabled', false).text('Purge Data');
-            jQuery('#purgeError').text('An error occurred. Please try again.').show();
-        });
+            jQuery('#purgeError').text('Failed to download backup. Purge cancelled.').show();
+        };
+        xhr.send('export_full_db=1&_token=' + encodeURIComponent('{{ csrf_token() }}'));
+    });
+
+    jQuery('#purgePassword').on('keypress', function(e){
+        if(e.which === 13){
+            e.preventDefault();
+            jQuery('#purgeSubmitBtn').click();
+        }
     });
 
     jQuery('#purgeConfirmModal').on('hidden.bs.modal', function(){

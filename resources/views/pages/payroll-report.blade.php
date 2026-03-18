@@ -103,9 +103,10 @@
                                         <th style="width:30px;"></th>
                                         <th>Department</th>
                                         <th>Name</th>
+                                        <th>Account No</th>
                                         <th class="text-center">Days in Month</th>
                                         <th class="text-center">Absent</th>
-                                        <th class="text-center">Final Pay</th>
+                                        <th class="text-center">OT Days</th>
                                         <th class="text-center">Advance</th>
                                         <th class="text-center">Paid Cash</th>
                                     </tr>
@@ -277,14 +278,14 @@ jQuery(function(){
 
             var basicAmount  = parseFloat(s.basic_salary) || 0;
             var oneDaySalary = WORKING_DAYS > 0 ? r2(basicAmount / WORKING_DAYS) : 0;
+            var totalBase    = parseFloat(att.total_base) || 0;
             var daysAbsent   = parseFloat(att.days_absent) || 0;
-            var absentDed    = r2(daysAbsent * oneDaySalary);
             var daysOt       = parseInt(att.days_overtime) || 0;
             var otAmount     = parseFloat(att.total_ot) || 0;
             var paidPf       = s.pf_enabled ? r2(parseFloat(s.pf_amount) || 0) : 0;
             var advance      = parseFloat(prev.advance_amount) || 0;
             var paidCash     = parseFloat(prev.paid_cash) || 0;
-            var finalPay     = r2(basicAmount - absentDed + otAmount - advance - paidPf);
+            var finalPay     = r2(totalBase + otAmount - advance - paidPf);
             var paidBank     = r2(finalPay - paidCash);
 
             var row = {
@@ -294,9 +295,9 @@ jQuery(function(){
                 account: s.bank_account || '--',
                 basic: basicAmount,
                 dailySal: oneDaySalary,
+                totalBase: totalBase,
                 daysInMonth: daysInMonth,
                 absent: daysAbsent,
-                absentDed: absentDed,
                 otDays: daysOt,
                 otAmount: r2(otAmount),
                 advance: advance,
@@ -312,29 +313,29 @@ jQuery(function(){
             html += '<td class="dt-control"></td>';
             html += '<td>'+row.dept+'</td>';
             html += '<td>'+row.name+'</td>';
+            html += '<td>'+row.account+'</td>';
             html += '<td class="text-center">'+row.daysInMonth+'</td>';
             html += '<td class="text-center">'+row.absent+'</td>';
-            html += '<td class="text-center fw-bold pr-final">'+row.finalPay.toFixed(2)+'</td>';
+            html += '<td class="text-center">'+row.otDays+'</td>';
             html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-advance pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.advance.toFixed(2)+'" style="width:90px;"></td>';
             html += '<td class="text-center"><input type="text" inputmode="decimal" class="form-control form-control-sm text-center pr-cash pr-numeric mx-auto" data-idx="'+idx+'" value="'+row.paidCash.toFixed(2)+'" style="width:90px;"></td>';
             html += '</tr>';
         });
 
-        if(!html) html = '<tr><td colspan="8" class="text-center text-muted">No data</td></tr>';
+        if(!html) html = '<tr><td colspan="9" class="text-center text-muted">No data</td></tr>';
         jQuery('#hrmsPrBody').html(html);
         jQuery('#hrmsPrCsv').show();
         jQuery('#hrmsPrSave').show();
     }
 
     function buildChildHtml(row){
-        return '<tr class="child-row"><td colspan="8">'
+        return '<tr class="child-row"><td colspan="9">'
             + '<div class="child-grid">'
-            + '<div class="child-item"><label>Account No</label><span>'+row.account+'</span></div>'
             + '<div class="child-item"><label>1 Day Salary</label><span>'+row.dailySal.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>Basic</label><span>'+row.basic.toFixed(2)+'</span></div>'
-            + '<div class="child-item"><label>Absent Deduction</label><span>'+row.absentDed.toFixed(2)+'</span></div>'
-            + '<div class="child-item"><label>OT Days</label><span>'+row.otDays+'</span></div>'
+            + '<div class="child-item"><label>Total Base</label><span>'+row.totalBase.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>OT Amount</label><span>'+row.otAmount.toFixed(2)+'</span></div>'
+            + '<div class="child-item"><label>Final Pay</label><span class="child-final fw-bold">'+row.finalPay.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>Paid in Bank</label><span class="child-bank">'+row.paidBank.toFixed(2)+'</span></div>'
             + '<div class="child-item"><label>Paid PF</label><span>'+row.paidPf.toFixed(2)+'</span></div>'
             + '</div></td></tr>';
@@ -388,13 +389,13 @@ jQuery(function(){
         var tr = jQuery('tr[data-idx="'+idx+'"]');
         row.advance  = parseFloat(tr.find('.pr-advance').val()) || 0;
         row.paidCash = parseFloat(tr.find('.pr-cash').val()) || 0;
-        row.finalPay = r2(row.basic - row.absentDed + row.otAmount - row.advance - row.paidPf);
+        row.finalPay = r2(row.totalBase + row.otAmount - row.advance - row.paidPf);
         row.paidBank = r2(row.finalPay - row.paidCash);
 
-        tr.find('.pr-final').text(row.finalPay.toFixed(2));
         // Update child row if open
         var childRow = tr.next('tr.child-row');
         if(childRow.length){
+            childRow.find('.child-final').text(row.finalPay.toFixed(2));
             childRow.find('.child-bank').text(row.paidBank.toFixed(2));
         }
     });
@@ -413,9 +414,10 @@ jQuery(function(){
                 year: prYear,
                 basic_amount: row.basic,
                 one_day_salary: row.dailySal,
+                total_base: row.totalBase,
                 days_in_month: row.daysInMonth,
                 days_absent: row.absent,
-                absent_deduction: row.absentDed,
+                absent_deduction: 0,
                 days_overtime: row.otDays,
                 overtime_amount: row.otAmount,
                 advance_amount: row.advance,
@@ -448,11 +450,11 @@ jQuery(function(){
     // CSV Export (all columns)
     jQuery('#hrmsPrCsv').on('click', function(){
         if(!prData.length) return;
-        var csv = 'Department,Name,Account No,Basic Amount,1 Day Salary,Days in Month,Days Absent,Absent Deduction,OT Days,OT Amount,Advance,Final Pay,Paid in Bank,Paid PF,Paid Cash\n';
+        var csv = 'Department,Name,Account No,Basic Amount,1 Day Salary,Days in Month,Days Absent,Total Base,OT Days,OT Amount,Advance,Final Pay,Paid in Bank,Paid PF,Paid Cash\n';
         prData.forEach(function(r){
             csv += '"'+r.dept+'","'+r.name+'","'+r.account+'",';
             csv += r.basic.toFixed(2)+','+r.dailySal.toFixed(2)+','+r.daysInMonth+',';
-            csv += r.absent+','+r.absentDed.toFixed(2)+','+r.otDays+',';
+            csv += r.absent+','+r.totalBase.toFixed(2)+','+r.otDays+',';
             csv += r.otAmount.toFixed(2)+','+r.advance.toFixed(2)+','+r.finalPay.toFixed(2)+',';
             csv += r.paidBank.toFixed(2)+','+r.paidPf.toFixed(2)+','+r.paidCash.toFixed(2)+'\n';
         });

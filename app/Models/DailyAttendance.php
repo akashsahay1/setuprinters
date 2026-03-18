@@ -10,7 +10,7 @@ class DailyAttendance extends Model
 
     protected $fillable = [
         'staff_id', 'date', 'check_in', 'check_out', 'total_hours',
-        'status', 'is_ot', 'ot_hours', 'base_wage', 'ot_wage', 'is_deleted',
+        'status', 'is_ot', 'ot_hours', 'ot_count', 'base_wage', 'ot_wage', 'is_deleted',
     ];
 
     protected $casts = [
@@ -20,6 +20,7 @@ class DailyAttendance extends Model
         'staff_id' => 'integer',
         'total_hours' => 'decimal:2',
         'ot_hours' => 'decimal:2',
+        'ot_count' => 'decimal:2',
         'base_wage' => 'decimal:2',
         'ot_wage' => 'decimal:2',
     ];

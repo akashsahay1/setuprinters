@@ -199,7 +199,10 @@ class AjaxController extends Controller
         if($request->has('delete_staff')){
             try {
                 $user = Auth::user();
-                if (!$user || !Hash::check($request->password, $user->password)) {
+                if (!$user || $user->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Managers are not allowed to delete records']);
+                }
+                if (!Hash::check($request->password, $user->password)) {
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
                 Staff::where('id', $request->staff_id)->update(['is_deleted' => true]);
@@ -245,7 +248,10 @@ class AjaxController extends Controller
         if($request->has('delete_staff_group')){
             try {
                 $user = Auth::user();
-                if (!$user || !Hash::check($request->password, $user->password)) {
+                if (!$user || $user->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Managers are not allowed to delete records']);
+                }
+                if (!Hash::check($request->password, $user->password)) {
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
                 StaffGroup::where('id', $request->group_id)->update(['is_deleted' => true]);
@@ -268,7 +274,14 @@ class AjaxController extends Controller
                 if (!Hash::check($request->password, $user->password)) {
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
-                User::where('id', $request->user_id)->update(['is_deleted' => true]);
+                $targetUser = User::find($request->user_id);
+                if (!$targetUser) {
+                    return response()->json(['status' => false, 'message' => 'User not found']);
+                }
+                if ($targetUser->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Manager accounts cannot be deleted']);
+                }
+                $targetUser->update(['is_deleted' => true]);
                 return response()->json(['status' => true, 'message' => 'User deleted successfully']);
             } catch (\Exception $e) {
                 return response()->json([
@@ -399,7 +412,10 @@ class AjaxController extends Controller
         if($request->has('delete_holiday')){
             try {
                 $user = Auth::user();
-                if (!$user || !Hash::check($request->password, $user->password)) {
+                if (!$user || $user->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Managers are not allowed to delete records']);
+                }
+                if (!Hash::check($request->password, $user->password)) {
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
                 Holiday::where('id', $request->holiday_id)->delete();
@@ -408,6 +424,82 @@ class AjaxController extends Controller
                 return response()->json([
                     'status' => false,
                     'message' => 'Failed to delete holiday',
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
+        if($request->has('export_full_db')){
+            try {
+                $dbHost = config('database.connections.mysql.host');
+                $dbPort = config('database.connections.mysql.port');
+                $dbName = config('database.connections.mysql.database');
+                $dbUser = config('database.connections.mysql.username');
+                $dbPass = config('database.connections.mysql.password');
+
+                $timestamp = now()->format('Y-m-d_His');
+                $sqlFile = storage_path("app/{$dbName}_{$timestamp}.sql");
+                $zipPath = storage_path("app/{$dbName}_{$timestamp}.zip");
+
+                // Run mysqldump — check common paths
+                $mysqldump = 'mysqldump';
+                $possiblePaths = [
+                    'C:\\Program Files\\MariaDB 12.1\\bin\\mysqldump.exe',
+                    'C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe',
+                    'C:\\laravel\\herd\\bin\\mysqldump.exe',
+                ];
+                foreach ($possiblePaths as $path) {
+                    if (file_exists($path)) {
+                        $mysqldump = $path;
+                        break;
+                    }
+                }
+
+                $command = sprintf(
+                    '%s --host=%s --port=%s --user=%s --password=%s --result-file=%s %s 2>&1',
+                    escapeshellarg($mysqldump),
+                    escapeshellarg($dbHost),
+                    escapeshellarg($dbPort),
+                    escapeshellarg($dbUser),
+                    escapeshellarg($dbPass),
+                    escapeshellarg($sqlFile),
+                    escapeshellarg($dbName)
+                );
+
+                \Log::info('Export DB command', ['cmd' => $command]);
+                exec($command, $output, $returnCode);
+                \Log::info('Export DB result', ['rc' => $returnCode, 'output' => $output, 'file_exists' => file_exists($sqlFile), 'size' => file_exists($sqlFile) ? filesize($sqlFile) : 0]);
+
+                if ($returnCode !== 0 || !file_exists($sqlFile) || filesize($sqlFile) === 0) {
+                    @unlink($sqlFile);
+                    return response()->json([
+                        'status' => false,
+                        'message' => 'mysqldump failed (rc=' . $returnCode . ')',
+                        'error' => config('app.debug') ? implode("\n", $output) : null,
+                    ]);
+                }
+
+                // Zip the SQL file
+                $zip = new \ZipArchive();
+                if ($zip->open($zipPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+                    @unlink($sqlFile);
+                    return response()->json(['status' => false, 'message' => 'Failed to create zip file']);
+                }
+                $zip->addFile($sqlFile, "{$dbName}_{$timestamp}.sql");
+                $zip->close();
+
+                // Clean up the SQL file
+                @unlink($sqlFile);
+
+                $filename = "setuprinters_backup_{$timestamp}.zip";
+                return response()->download($zipPath, $filename)->deleteFileAfterSend(true);
+            } catch (\Exception $e) {
+                \Log::error('Export DB exception', ['msg' => $e->getMessage()]);
+                if (isset($sqlFile) && file_exists($sqlFile)) @unlink($sqlFile);
+                if (isset($zipPath) && file_exists($zipPath)) @unlink($zipPath);
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to export database',
                     'error' => config('app.debug') ? $e->getMessage() : null,
                 ]);
             }
@@ -548,6 +640,7 @@ class AjaxController extends Controller
                     'leaves' => $leaves,
                     'paid_leave_counts' => $paidLeaveCounts,
                     'fy_label' => $fyLabel,
+                    'paid_leave_limit' => config('services.paid_leave_limit'),
                 ]);
             } catch (\Exception $e) {
                 return response()->json([
@@ -581,7 +674,7 @@ class AjaxController extends Controller
                         if (!isset($paidLeaveTracker[$leave->staff_id])) {
                             $paidLeaveTracker[$leave->staff_id] = $this->countPaidLeavesInFy($leave->staff_id, $dateStr);
                         }
-                        if ($paidLeaveTracker[$leave->staff_id] >= 2) {
+                        if ($paidLeaveTracker[$leave->staff_id] >= config('services.paid_leave_limit')) {
                             $skipped++;
                             continue;
                         }
@@ -650,14 +743,15 @@ class AjaxController extends Controller
 
                 $markAs = $request->input('mark_as', 'unpaid'); // paid or unpaid
 
-                // Check 2-day paid leave limit per FY
+                // Check paid leave limit per FY
+                $paidLeaveLimit = config('services.paid_leave_limit');
                 if ($markAs === 'paid') {
                     $paidCount = $this->countPaidLeavesInFy($leave->staff_id, $leave->leave_date->format('Y-m-d'));
-                    if ($paidCount >= 2) {
+                    if ($paidCount >= $paidLeaveLimit) {
                         $fy = $this->getFyLabel($leave->leave_date->format('Y-m-d'));
                         return response()->json([
                             'status' => false,
-                            'message' => "Paid leave limit (2 days) reached for FY $fy.",
+                            'message' => "Paid leave limit ({$paidLeaveLimit} days) reached for FY $fy.",
                         ]);
                     }
                 }
@@ -753,13 +847,13 @@ class AjaxController extends Controller
                     $leaveMap[$l->staff_id][$l->leave_date->format('Y-m-d')] = $l->leave_type;
                 }
 
-                // Fetch all OFFICE IN/OUT scans for the month
+                // Fetch all LOGIN/LOGOUT scans for the month
                 $scans = ScannedBarcode::active()
                     ->whereDate('created_at', '>=', $startDate)
                     ->whereDate('created_at', '<=', $endDate)
                     ->where(function($q) {
-                        $q->where('barcode', 'OFFICE IN')
-                          ->orWhere('barcode', 'LIKE', 'OFFICE OUT%');
+                        $q->where('barcode', 'LOGIN')
+                          ->orWhere('barcode', 'LOGOUT');
                     })
                     ->orderBy('created_at')
                     ->get();
@@ -769,7 +863,7 @@ class AjaxController extends Controller
                 foreach ($scans as $scan) {
                     $uid  = $scan->user_id;
                     $date = $scan->created_at->format('Y-m-d');
-                    $type = (trim($scan->barcode) === 'OFFICE OUT') ? 'out' : 'in';
+                    $type = (trim($scan->barcode) === 'LOGOUT') ? 'out' : 'in';
                     $scanMap[$uid][$date][$type][] = $scan->created_at;
                 }
 
@@ -795,7 +889,7 @@ class AjaxController extends Controller
                     $basicSalary = (float) $staff->basic_salary;
                     $dailyWage   = $workingDays > 0 ? $basicSalary / $workingDays : 0;
                     $shiftHours  = (int) ($staff->shift_hours ?: 8);
-                    $hourlyWage  = $shiftHours > 0 ? $dailyWage / $shiftHours : 0;
+                    $otMaxHours  = $this->getOtMaxHours($staff);
 
                     for ($day = 1; $day <= $daysInMonth; $day++) {
                         $dateStr = sprintf('%04d-%02d-%02d', $year, $month, $day);
@@ -814,56 +908,47 @@ class AjaxController extends Controller
                         $status     = 'absent';
                         $isOt       = false;
                         $otHours    = 0;
+                        $otCount    = 0;
                         $baseWage   = 0;
                         $otWage     = 0;
 
                         if ($hasIn && $hasOut) {
-                            $checkIn  = $inScans[0]; // first IN
-                            $checkOut = end($outScans); // last OUT
+                            $checkIn    = $inScans[0];
+                            $checkOut   = end($outScans);
                             $totalHours = round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2);
-                            $status = $totalHours > 4 ? 'present' : 'half_day';
+                            $status     = 'present';
 
                             if ($isSunday || $isHoliday) {
-                                // Holiday/Sunday with attendance: holiday pay + all hours as OT
+                                // Holiday/Sunday: base holiday pay + all hours as OT
                                 $baseWage = round($dailyWage, 2);
-                                $otHours  = $this->capOt($staff, $totalHours);
-                                $otWage   = round($hourlyWage * $otHours, 2);
+                                $otHours  = $totalHours;
+                                $otCount  = $otMaxHours > 0 ? round($otHours / $otMaxHours, 2) : 0;
+                                $otWage   = round($otCount * $dailyWage, 2);
                                 $isOt     = $otHours > 0;
-                            } elseif ($staff->wage_calc_type === 'hour_based') {
-                                $regular = min($totalHours, $shiftHours);
-                                $excess  = max(0, $totalHours - $shiftHours);
-                                $otHours = $this->capOt($staff, $excess);
-                                $baseWage = round($hourlyWage * $regular, 2);
-                                $otWage   = round($hourlyWage * $otHours, 2);
-                                $isOt = $otHours > 0;
+                            } elseif ($totalHours < $shiftHours) {
+                                // Worked less than shift: proportional wage, no OT
+                                $baseWage = round(($totalHours / $shiftHours) * $dailyWage, 2);
                             } else {
-                                $baseWage = ($status === 'half_day') ? round($dailyWage / 2, 2) : round($dailyWage, 2);
+                                // Worked >= shift hours: full day + OT on excess
+                                $baseWage = round($dailyWage, 2);
+                                $otHours  = round($totalHours - $shiftHours, 2);
+                                $otCount  = $otMaxHours > 0 ? round($otHours / $otMaxHours, 2) : 0;
+                                $otWage   = round($otCount * $dailyWage, 2);
+                                $isOt     = $otHours > 0;
                             }
                         } elseif ($hasIn || $hasOut) {
+                            // Only one scan (LOGIN or LOGOUT, not both): absent
                             $checkIn  = $hasIn ? $inScans[0] : null;
                             $checkOut = $hasOut ? end($outScans) : null;
-                            $status   = 'half_day';
-                            $baseWage = round($dailyWage, 2);
-
-                            if ($isSunday || $isHoliday) {
-                                // Holiday/Sunday with partial scan: holiday pay + partial hours as OT
-                                $partialHours = ($checkIn && $checkOut)
-                                    ? round(abs($checkOut->diffInMinutes($checkIn)) / 60, 2)
-                                    : round($shiftHours / 2, 2);
-                                $otHours = $this->capOt($staff, $partialHours);
-                                $otWage  = round($hourlyWage * $otHours, 2);
-                                $isOt    = $otHours > 0;
-                            }
+                            $status   = 'absent';
                         } elseif (isset($leaveMap[$staff->id][$dateStr])) {
                             $leaveType = $leaveMap[$staff->id][$dateStr];
                             $isPaid = ($leaveType !== 'unpaid') && (($paidLeaveCounts[$staff->id] ?? 0) <= 2);
 
                             if ($isPaid) {
-                                // Paid leave within 2-day FY limit: mark as present
                                 $status   = 'present';
                                 $baseWage = round($dailyWage, 2);
                             } else {
-                                // Unpaid leave or FY limit exceeded
                                 $status   = 'leave';
                                 $baseWage = 0;
                             }
@@ -883,6 +968,7 @@ class AjaxController extends Controller
                                 'status'      => $status,
                                 'is_ot'       => $isOt,
                                 'ot_hours'    => $otHours,
+                                'ot_count'    => $otCount,
                                 'base_wage'   => $baseWage,
                                 'ot_wage'     => $otWage,
                                 'is_deleted'  => false,
@@ -915,8 +1001,9 @@ class AjaxController extends Controller
                     ->whereBetween('date', [$startDate, $endDate])
                     ->select(
                         'staff_id',
-                        DB::raw("SUM(CASE WHEN status = 'absent' THEN 1 WHEN status = 'half_day' THEN 0.5 WHEN status = 'leave' AND base_wage = 0 THEN 1 ELSE 0 END) as days_absent"),
+                        DB::raw("SUM(CASE WHEN status = 'absent' THEN 1 WHEN status = 'leave' AND base_wage = 0 THEN 1 ELSE 0 END) as days_absent"),
                         DB::raw("SUM(CASE WHEN ot_hours > 0 THEN 1 ELSE 0 END) as days_overtime"),
+                        DB::raw("SUM(ot_count) as total_ot_count"),
                         DB::raw("SUM(ot_wage) as total_ot"),
                         DB::raw("SUM(base_wage) as total_base")
                     )
@@ -1027,9 +1114,11 @@ class AjaxController extends Controller
                     ->select(
                         DB::raw("MONTH(date) as m"),
                         DB::raw("YEAR(date) as y"),
-                        DB::raw("SUM(CASE WHEN status = 'absent' THEN 1 WHEN status = 'half_day' THEN 0.5 WHEN status = 'leave' AND base_wage = 0 THEN 1 ELSE 0 END) as days_absent"),
+                        DB::raw("SUM(CASE WHEN status = 'absent' THEN 1 WHEN status = 'leave' AND base_wage = 0 THEN 1 ELSE 0 END) as days_absent"),
                         DB::raw("SUM(CASE WHEN ot_hours > 0 THEN 1 ELSE 0 END) as days_overtime"),
-                        DB::raw("SUM(ot_wage) as total_ot")
+                        DB::raw("SUM(ot_count) as total_ot_count"),
+                        DB::raw("SUM(ot_wage) as total_ot"),
+                        DB::raw("SUM(base_wage) as total_base")
                     )
                     ->groupBy(DB::raw("YEAR(date)"), DB::raw("MONTH(date)"))
                     ->get()
@@ -1088,11 +1177,11 @@ class AjaxController extends Controller
 
                     // Otherwise compute live from attendance
                     $daysAbsent = (float) $att->days_absent;
-                    $absentDed = round($daysAbsent * $oneDaySalary, 2);
+                    $totalBase = round((float) $att->total_base, 2);
                     $daysOt = (int) $att->days_overtime;
                     $otAmount = round((float) $att->total_ot, 2);
                     $paidPf = $pfEnabled ? round($pfAmount, 2) : 0;
-                    $finalPay = round($basicSalary - $absentDed + $otAmount - $paidPf, 2);
+                    $finalPay = round($totalBase + $otAmount - $paidPf, 2);
                     $paidBank = round($finalPay, 2);
                     $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $fm['month'], $fm['year']);
 
@@ -1101,9 +1190,10 @@ class AjaxController extends Controller
                         'year'             => $fm['year'],
                         'basic_amount'     => $basicSalary,
                         'one_day_salary'   => $oneDaySalary,
+                        'total_base'       => $totalBase,
                         'days_in_month'    => $daysInMonth,
                         'days_absent'      => $daysAbsent,
-                        'absent_deduction' => $absentDed,
+                        'absent_deduction' => 0,
                         'days_overtime'    => $daysOt,
                         'overtime_amount'  => $otAmount,
                         'advance_amount'   => 0,
@@ -1228,20 +1318,285 @@ class AjaxController extends Controller
             }
         }
 
+        if($request->has('fetch_edit_attendance')){
+            try {
+                $staffId = (int) $request->input('staff_id');
+                $month   = (int) $request->input('month', now()->month);
+                $year    = (int) $request->input('year', now()->year);
+                $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+                $startDate = sprintf('%04d-%02d-01', $year, $month);
+                $endDate   = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
+
+                $staff = Staff::active()->with('group:id,name')->find($staffId);
+                if (!$staff) {
+                    return response()->json(['status' => false, 'message' => 'Staff not found']);
+                }
+
+                $records = DailyAttendance::where('staff_id', $staffId)
+                    ->whereBetween('date', [$startDate, $endDate])
+                    ->orderBy('date')
+                    ->get();
+
+                $rows = [];
+                foreach ($records as $rec) {
+                    $rows[] = [
+                        'id'          => $rec->id,
+                        'date'        => $rec->date->format('Y-m-d'),
+                        'date_label'  => $rec->date->format('d M, D'),
+                        'check_in'    => $rec->check_in,
+                        'check_out'   => $rec->check_out,
+                        'total_hours' => (float) $rec->total_hours,
+                        'status'      => $rec->status,
+                        'is_ot'       => (bool) $rec->is_ot,
+                        'ot_hours'    => (float) $rec->ot_hours,
+                        'ot_count'    => (float) $rec->ot_count,
+                        'base_wage'   => (float) $rec->base_wage,
+                        'ot_wage'     => (float) $rec->ot_wage,
+                    ];
+                }
+
+                // Lock editing only after the month has ended
+                $lastDayOfMonth = \Carbon\Carbon::create($year, $month)->endOfMonth()->format('Y-m-d');
+                $payrollLocked = now()->format('Y-m-d') > $lastDayOfMonth;
+
+                return response()->json([
+                    'status'         => true,
+                    'data'           => $rows,
+                    'payroll_locked' => $payrollLocked,
+                    'staff'          => [
+                        'id'   => $staff->id,
+                        'name' => $staff->full_name,
+                        'group' => $staff->group ? $staff->group->name : '-',
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to fetch attendance data',
+                    'error'   => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
+        if($request->has('update_daily_attendance')){
+            try {
+                $id = (int) $request->input('attendance_id');
+                $record = DailyAttendance::findOrFail($id);
+
+                // Block editing after the month has ended
+                $recDate = \Carbon\Carbon::parse($record->date);
+                $lastDayOfMonth = $recDate->copy()->endOfMonth()->format('Y-m-d');
+                if (now()->format('Y-m-d') > $lastDayOfMonth) {
+                    return response()->json(['status' => false, 'message' => 'Cannot edit: the month has ended']);
+                }
+
+                $totalHours = (float) $request->input('total_hours', 0);
+
+                $staff = Staff::active()->find($record->staff_id);
+                if (!$staff) {
+                    return response()->json(['status' => false, 'message' => 'Staff not found']);
+                }
+
+                $workingDays = 26;
+                $basicSalary = (float) $staff->basic_salary;
+                $dailyWage   = $workingDays > 0 ? $basicSalary / $workingDays : 0;
+                $shiftHours  = (int) ($staff->shift_hours ?: 8);
+                $otMaxHours  = $this->getOtMaxHours($staff);
+
+                $dateObj   = \Carbon\Carbon::parse($record->date);
+                $isSunday  = ($dateObj->dayOfWeek === 0);
+                $isHoliday = Holiday::active()
+                    ->where(function ($q) use ($dateObj) {
+                        $dateStr = $dateObj->format('Y-m-d');
+                        $month   = $dateObj->month;
+                        $q->where(function ($q2) use ($dateStr) {
+                            $q2->where('is_yearly', false)->whereDate('date', $dateStr);
+                        })->orWhere(function ($q2) use ($month, $dateObj) {
+                            $q2->where('is_yearly', true)
+                               ->whereMonth('date', $month)
+                               ->whereDay('date', $dateObj->day);
+                        });
+                    })
+                    ->exists();
+
+                // Auto-derive status from total_hours
+                $status   = 'absent';
+                $isOt     = false;
+                $otHours  = 0;
+                $otCount  = 0;
+                $baseWage = 0;
+                $otWage   = 0;
+
+                if ($totalHours > 0) {
+                    $status = $totalHours > 4 ? 'present' : 'half_day';
+
+                    if ($isSunday || $isHoliday) {
+                        // Holiday/Sunday: base pay + all hours as OT
+                        $status   = 'holiday';
+                        $baseWage = round($dailyWage, 2);
+                        $otHours  = round($totalHours, 2);
+                        $otCount  = $otMaxHours > 0 ? round($otHours / $otMaxHours, 2) : 0;
+                        $otWage   = round($otCount * $dailyWage, 2);
+                        $isOt     = true;
+                    } elseif ($totalHours < $shiftHours) {
+                        // Less than shift: proportional wage
+                        $baseWage = round(($totalHours / $shiftHours) * $dailyWage, 2);
+                    } else {
+                        // Full shift or more: full day + OT on excess
+                        $baseWage = round($dailyWage, 2);
+                        $otHours  = round($totalHours - $shiftHours, 2);
+                        $otCount  = $otMaxHours > 0 ? round($otHours / $otMaxHours, 2) : 0;
+                        $otWage   = round($otCount * $dailyWage, 2);
+                        $isOt     = $otHours > 0;
+                    }
+                } elseif ($isSunday || $isHoliday) {
+                    $status   = 'holiday';
+                    $baseWage = round($dailyWage, 2);
+                }
+
+                $record->update([
+                    'status'      => $status,
+                    'total_hours' => $totalHours,
+                    'is_ot'       => $isOt,
+                    'ot_hours'    => $otHours,
+                    'ot_count'    => $otCount,
+                    'base_wage'   => $baseWage,
+                    'ot_wage'     => $otWage,
+                ]);
+
+                return response()->json([
+                    'status'  => true,
+                    'message' => 'Attendance updated successfully',
+                    'data'    => [
+                        'id'          => $record->id,
+                        'date'        => $record->date->format('Y-m-d'),
+                        'date_label'  => $record->date->format('d M, D'),
+                        'check_in'    => $record->check_in,
+                        'check_out'   => $record->check_out,
+                        'total_hours' => (float) $record->total_hours,
+                        'status'      => $record->status,
+                        'is_ot'       => (bool) $record->is_ot,
+                        'ot_hours'    => (float) $record->ot_hours,
+                        'ot_count'    => (float) $record->ot_count,
+                        'base_wage'   => (float) $record->base_wage,
+                        'ot_wage'     => (float) $record->ot_wage,
+                    ],
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status'  => false,
+                    'message' => 'Failed to update attendance',
+                    'error'   => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
+        if($request->has('fetch_attendance_calc')){
+            try {
+                $month = (int) $request->input('month', now()->month);
+                $year  = (int) $request->input('year', now()->year);
+                $daysInMonth = cal_days_in_month(CAL_GREGORIAN, $month, $year);
+                $startDate = sprintf('%04d-%02d-01', $year, $month);
+                $endDate   = sprintf('%04d-%02d-%02d', $year, $month, $daysInMonth);
+
+                $staffList = Staff::active()->with('group:id,name')->orderBy('full_name')->get();
+
+                // Fetch scans for the month + look back for unclosed LOGIN from before
+                $scans = ScannedBarcode::active()
+                    ->where(function($q) {
+                        $q->where('barcode', 'LOGIN')
+                          ->orWhere('barcode', 'LOGOUT');
+                    })
+                    ->orderBy('created_at')
+                    ->get();
+
+                // Group all scans by user chronologically
+                $userScans = [];
+                foreach ($scans as $scan) {
+                    $userScans[$scan->user_id][] = [
+                        'type' => (trim($scan->barcode) === 'LOGOUT') ? 'out' : 'in',
+                        'time' => $scan->created_at,
+                    ];
+                }
+
+                $result = [];
+                foreach ($staffList as $staff) {
+                    $staffScans = $userScans[$staff->id] ?? [];
+                    $dailyHours = $this->calculateDailyHours($staffScans, $startDate, $endDate);
+                    $totalMonthHours = array_sum($dailyHours);
+                    $totalDays = round($totalMonthHours / 8, 2);
+
+                    $result[] = [
+                        'staff_id'    => $staff->id,
+                        'staff_name'  => $staff->full_name,
+                        'group_name'  => $staff->group ? $staff->group->name : '-',
+                        'total_hours' => round($totalMonthHours, 2),
+                        'total_days'  => $totalDays,
+                    ];
+                }
+
+                return response()->json(['status' => true, 'data' => $result, 'month' => $month, 'year' => $year]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to calculate attendance',
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
     }
 
-    private function capOt($staff, float $excessHours): float
+    /**
+     * Pair LOGIN→LOGOUT chronologically, split cross-day sessions at midnight,
+     * and return hours per date within the given range.
+     */
+    private function calculateDailyHours(array $scans, string $rangeStart, string $rangeEnd): array
     {
-        if ($staff->ot_type === 'no_ot') {
-            return 0;
+        $dailyHours = [];
+        $pendingLogin = null;
+
+        foreach ($scans as $scan) {
+            if ($scan['type'] === 'in') {
+                $pendingLogin = $scan['time'];
+            } elseif ($scan['type'] === 'out' && $pendingLogin !== null) {
+                $this->splitSessionIntoDays($pendingLogin, $scan['time'], $rangeStart, $rangeEnd, $dailyHours);
+                $pendingLogin = null;
+            }
         }
-        if ($staff->ot_type === 'hours') {
-            return min($excessHours, (float) ($staff->ot_max_hours ?: 0));
+
+        return $dailyHours;
+    }
+
+    /**
+     * Split a single LOGIN→LOGOUT session across midnight boundaries
+     * and add hours to the dailyHours array for dates within range.
+     */
+    private function splitSessionIntoDays(Carbon $login, Carbon $logout, string $rangeStart, string $rangeEnd, array &$dailyHours): void
+    {
+        $cursor = $login->copy();
+
+        while ($cursor->lt($logout)) {
+            $dayEnd = $cursor->copy()->endOfDay();
+            $segmentEnd = $logout->lt($dayEnd) ? $logout : $dayEnd;
+            $dateStr = $cursor->format('Y-m-d');
+
+            if ($dateStr >= $rangeStart && $dateStr <= $rangeEnd) {
+                $minutes = abs($segmentEnd->diffInMinutes($cursor));
+                $hours = round($minutes / 60, 2);
+                $dailyHours[$dateStr] = ($dailyHours[$dateStr] ?? 0) + $hours;
+            }
+
+            $cursor = $cursor->copy()->addDay()->startOfDay();
         }
-        if ($staff->ot_type === 'minutes') {
-            return min($excessHours, ((float) ($staff->ot_max_minutes ?: 0)) / 60);
-        }
-        return $excessHours;
+    }
+
+    private function getOtMaxHours($staff): float
+    {
+        if ($staff->ot_type === 'no_ot') return 0;
+        if ($staff->ot_type === 'hours') return (float) ($staff->ot_max_hours ?: 0);
+        if ($staff->ot_type === 'minutes') return ((float) ($staff->ot_max_minutes ?: 0)) / 60;
+        return 0;
     }
 
     private function countPaidLeavesInFy(int $staffId, string $dateStr): int

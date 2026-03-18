@@ -74,9 +74,11 @@
                                             <button type="button" class="square-white border-0 bg-transparent p-0 holiday-save-btn d-none" title="Save">
                                                 <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" fill="none" stroke="rgba(82,82,108,0.8)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg>
                                             </button>
-                                            <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 holiday-del-btn" title="Delete">
-                                                <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
-                                            </button>
+                                            @if(auth()->user()->user_role !== 'manager')
+                                                <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 holiday-del-btn" title="Delete">
+                                                    <svg><use href="{{ asset('assets/svg/icon-sprite.svg#trash1') }}"></use></svg>
+                                                </button>
+                                            @endif
                                         </div>
                                     </li>
                                     @empty
@@ -223,7 +225,9 @@ jQuery(function(){
                     + '<div class="common-align gap-2 ms-2">'
                     + '<button type="button" class="square-white border-0 bg-transparent p-0 holiday-edit-btn" title="Edit"><svg><use href="{{ asset("assets/svg/icon-sprite.svg#edit-content") }}"></use></svg></button>'
                     + '<button type="button" class="square-white border-0 bg-transparent p-0 holiday-save-btn d-none" title="Save"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" fill="none" stroke="rgba(82,82,108,0.8)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline></svg></button>'
+                    @if(auth()->user()->user_role !== 'manager')
                     + '<button type="button" class="square-white trash-7 border-0 bg-transparent p-0 holiday-del-btn" title="Delete"><svg><use href="{{ asset("assets/svg/icon-sprite.svg#trash1") }}"></use></svg></button>'
+                    @endif
                     + '</div></li>';
                 jQuery('#holidaysList').append(li);
                 jQuery('#newHolidayName').val('');

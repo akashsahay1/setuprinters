@@ -56,7 +56,6 @@
                                     <table class="table table-bordered table-sm">
                                         <thead class="table-light">
                                             <tr>
-                                                <th style="width:40px;"></th>
                                                 <th>Name</th>
                                                 <th>Date</th>
                                                 <th>Type</th>
@@ -65,7 +64,7 @@
                                             </tr>
                                         </thead>
                                         <tbody id="pendingBody">
-                                            <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                                            <tr><td colspan="5" class="text-center text-muted">Loading...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -156,7 +155,7 @@ function getActiveStatus() {
 
 function fetchLeaves(status) {
     var bodyId = '#' + status + 'Body';
-    var colSpan = status === 'pending' ? 6 : 5;
+    var colSpan = 5;
     jQuery(bodyId).html('<tr><td colspan="' + colSpan + '" class="text-center text-muted">Loading...</td></tr>');
 
     jQuery.ajax({
@@ -169,27 +168,24 @@ function fetchLeaves(status) {
                 return;
             }
 
-            // Store paid leave counts and FY label
+            // Store paid leave counts, FY label and limit
             if (res.paid_leave_counts) paidLeaveCounts = res.paid_leave_counts;
             if (res.fy_label) fyLabel = res.fy_label;
+            var plLimit = res.paid_leave_limit || 2;
 
             var html = '';
             res.leaves.forEach(function(leave) {
                 var staffName = leave.staff ? leave.staff.full_name : 'Unknown';
                 var staffId = leave.staff ? leave.staff.id : 0;
                 var usedCount = paidLeaveCounts[staffId] || 0;
-                var limitReached = usedCount >= 2;
+                var limitReached = usedCount >= plLimit;
 
                 html += '<tr>';
-
-                if (status === 'pending') {
-                    html += '<td><input type="checkbox" class="form-check-input leave-check" value="' + leave.id + '"></td>';
-                }
 
                 html += '<td>' + staffName;
                 if (status === 'pending') {
                     var badgeClass = limitReached ? 'bg-danger' : 'bg-secondary';
-                    html += ' <span class="badge ' + badgeClass + '" style="font-size:0.7rem;" title="Paid leaves used in FY ' + fyLabel + '">' + usedCount + '/2 PL</span>';
+                    html += ' <span class="badge ' + badgeClass + '" style="font-size:0.7rem;" title="Paid leaves used in FY ' + fyLabel + '">' + usedCount + '/' + plLimit + ' PL</span>';
                 }
                 html += '</td>';
                 html += '<td>' + formatDate(leave.leave_date) + '</td>';
@@ -199,7 +195,7 @@ function fetchLeaves(status) {
                 if (status === 'pending') {
                     html += '<td>';
                     if (limitReached) {
-                        html += '<button class="btn btn-secondary btn-sm me-1" disabled title="Paid leave limit (2/2) reached for FY ' + fyLabel + '">Paid</button>';
+                        html += '<button class="btn btn-secondary btn-sm me-1" disabled title="Paid leave limit (' + usedCount + '/' + plLimit + ') reached for FY ' + fyLabel + '">Paid</button>';
                     } else {
                         html += '<button class="btn btn-success btn-sm approve-leave-btn me-1" data-id="' + leave.id + '" data-mark="paid">Paid</button>';
                     }

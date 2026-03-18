@@ -97,7 +97,7 @@ class PageController extends Controller
         $groups = StaffGroup::active()->orderBy('name')->get();
 
         $todayScans = ScannedBarcode::active()
-            ->select('id', 'user_id', 'barcode', 'created_at')
+            ->select('id', 'selfie', 'user_id', 'barcode', 'created_at')
             ->whereDate('created_at', today())
             ->with('staff:id,full_name,profile_photo,group_id,qr_code')
             ->orderBy('created_at', 'asc')
@@ -173,11 +173,21 @@ class PageController extends Controller
         return view('pages.reporting');
     }
 
-    public function staffs()
+    public function staffs(Request $request)
     {
-        $staffList = Staff::active()->with('group')->orderBy('full_name')->paginate(30);
+        $query = Staff::active()->with('group')->orderBy('full_name');
+        if ($request->filled('group')) {
+            $query->where('group_id', $request->group);
+        }
+        $staffCount = $query->count();
+        $staffList = $query->get();
         $groups = StaffGroup::active()->orderBy('name')->get();
-        return view('pages.staffs', ['staffList' => $staffList, 'groups' => $groups]);
+        return view('pages.staffs', [
+            'staffList' => $staffList,
+            'staffCount' => $staffCount,
+            'groups' => $groups,
+            'selectedGroup' => $request->group,
+        ]);
     }
 
     public function payrollReport()
@@ -245,5 +255,17 @@ class PageController extends Controller
         }
         $groups = StaffGroup::active()->orderBy('name')->get();
         return view('pages.staff-edit', ['staff' => $staff, 'groups' => $groups]);
+    }
+
+    public function attendanceCalc()
+    {
+        return view('pages.attendance-calc');
+    }
+
+    public function editAttendance()
+    {
+        $groups = StaffGroup::active()->orderBy('name')->get();
+        $staffList = Staff::active()->with('group')->orderBy('full_name')->get();
+        return view('pages.edit-attendance', ['groups' => $groups, 'staffList' => $staffList]);
     }
 }

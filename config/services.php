@@ -39,4 +39,6 @@ return [
         'token' => env('SCAN_API_TOKEN'),
     ],
 
+    'paid_leave_limit' => (int) env('PAID_LEAVE_LIMIT', 2),
+
 ];

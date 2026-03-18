@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ScanApiController;
+use App\Http\Controllers\LeaveController;
 use App\Http\Middleware\VerifyScanApiToken;
 
 Route::get('user/list', [UserController::class, 'index']);
@@ -10,4 +11,6 @@ Route::get('user/list', [UserController::class, 'index']);
 Route::middleware(VerifyScanApiToken::class)->group(function () {
     Route::post('scan', [ScanApiController::class, 'store']);
     Route::post('user/scan-code', [ScanApiController::class, 'scanCode']);
+    Route::post('leave/apply', [LeaveController::class, 'apply']);
+    Route::get('leave/check-today', [LeaveController::class, 'checkToday']);
 });

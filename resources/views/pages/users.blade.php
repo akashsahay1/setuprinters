@@ -76,12 +76,14 @@
                                                     <td>
                                                         <div class="common-align gap-2 justify-content-start">
                                                             <!-- Edit Icon -->
+                                                            @if(auth()->user()->user_role === 'admin' || $user->user_role !== 'admin')
                                                             <a class="square-white" href="{{ url('users/'.$user->id.'/edit') }}">
                                                                 <svg>
                                                                     <use href="{{ asset('assets/svg/icon-sprite.svg#edit-content') }}"></use>
                                                                 </svg>
                                                             </a>
-                                                            @if(auth()->user()->user_role === 'admin' && auth()->id() !== $user->id)
+                                                            @endif
+                                                            @if(auth()->user()->user_role === 'admin' && auth()->id() !== $user->id && $user->user_role !== 'manager')
                                                                 <!-- Delete Icon -->
                                                                 <button type="button" class="square-white trash-7 border-0 bg-transparent p-0 user-delete-btn" title="Delete" data-id="{{ $user->id }}" data-name="{{ $user->full_name }}">
                                                                     <svg>
@@ -112,7 +114,6 @@
         </div>
     </div>
 </div>
-
 <!-- Delete Confirmation Modal -->
 <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-labelledby="deleteConfirmModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
