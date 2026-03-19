@@ -206,11 +206,53 @@ class AjaxController extends Controller
                     return response()->json(['status' => false, 'message' => 'Incorrect password']);
                 }
                 Staff::where('id', $request->staff_id)->update(['is_deleted' => true]);
-                return response()->json(['status' => true, 'message' => 'Staff deleted successfully']);
+                return response()->json(['status' => true, 'message' => 'Staff moved to trash']);
             } catch (\Exception $e) {
                 return response()->json([
                     'status' => false,
                     'message' => 'Failed to delete staff',
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
+        if($request->has('restore_staff')){
+            try {
+                $user = Auth::user();
+                if (!$user || $user->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Managers are not allowed to restore records']);
+                }
+                Staff::where('id', $request->staff_id)->update(['is_deleted' => false]);
+                return response()->json(['status' => true, 'message' => 'Staff restored successfully']);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to restore staff',
+                    'error' => config('app.debug') ? $e->getMessage() : null,
+                ]);
+            }
+        }
+
+        if($request->has('permanent_delete_staff')){
+            try {
+                $user = Auth::user();
+                if (!$user || $user->user_role === 'manager') {
+                    return response()->json(['status' => false, 'message' => 'Managers are not allowed to delete records']);
+                }
+                if (!Hash::check($request->password, $user->password)) {
+                    return response()->json(['status' => false, 'message' => 'Incorrect password']);
+                }
+                $staffId = $request->staff_id;
+                ScannedBarcode::where('user_id', $staffId)->delete();
+                DailyAttendance::where('staff_id', $staffId)->delete();
+                LeaveApplication::where('staff_id', $staffId)->delete();
+                PayrollRecord::where('staff_id', $staffId)->delete();
+                Staff::where('id', $staffId)->delete();
+                return response()->json(['status' => true, 'message' => 'Staff and all related records permanently deleted']);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'status' => false,
+                    'message' => 'Failed to permanently delete staff',
                     'error' => config('app.debug') ? $e->getMessage() : null,
                 ]);
             }

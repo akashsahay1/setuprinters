@@ -190,6 +190,22 @@ class PageController extends Controller
         ]);
     }
 
+    public function staffTrash(Request $request)
+    {
+        $query = Staff::where('is_deleted', true)->with('group')->orderBy('full_name');
+        if ($request->filled('group')) {
+            $query->where('group_id', $request->group);
+        }
+        $staffList = $query->get();
+        $groups = StaffGroup::active()->orderBy('name')->get();
+        return view('pages.staffs-trash', [
+            'staffList' => $staffList,
+            'staffCount' => $staffList->count(),
+            'groups' => $groups,
+            'selectedGroup' => $request->group,
+        ]);
+    }
+
     public function payrollReport()
     {
         $staffList = Staff::active()->with('group')->orderBy('full_name')->get();

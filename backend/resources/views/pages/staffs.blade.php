@@ -40,6 +40,9 @@
                         @endforeach
                     </select>
                     <button class="btn btn-success" id="staffCsvBtn">CSV</button>
+                    @if(auth()->user()->user_role !== 'manager')
+                        <a href="{{ url('staffs/trash') }}" class="btn btn-outline-danger">Trash</a>
+                    @endif
                 </div>
 
                 <!-- Migration banner -->
@@ -63,6 +66,7 @@
                                                 <th>Name</th>
                                                 <th>Phone</th>
                                                 <th>Group</th>
+                                                <th>Added</th>
                                                 <th style="width:100px;" class="text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -75,6 +79,7 @@
                                                     <td>{{ $s->full_name }} {{ $s->id }}</td>
                                                     <td>{{ $s->phone_number }}</td>
                                                     <td>{{ $s->group ? $s->group->name : '—' }}</td>
+                                                    <td data-order="{{ $s->created_at ? $s->created_at->format('Y-m-d H:i:s') : '' }}">@if($s->created_at){{ $s->created_at->format('d-m-Y') }}<br><small class="text-muted">{{ $s->created_at->format('h:i A') }}</small>@else — @endif</td>
                                                     <td class="text-center">
                                                         <div class="common-align gap-2 justify-content-center">
                                                             <a class="square-white" href="{{ url('staffs/'.$s->id.'/edit') }}" title="Edit">
@@ -89,7 +94,7 @@
                                                     </td>
                                                 </tr>
                                             @empty
-                                                <tr><td colspan="5" class="text-center py-4">No staff found.</td></tr>
+                                                <tr><td colspan="6" class="text-center py-4">No staff found.</td></tr>
                                             @endforelse
                                         </tbody>
                                     </table>
@@ -243,9 +248,9 @@ jQuery(function(){
         // --- DataTables Init ---
         var table = jQuery('#staffTable').DataTable({
             pageLength: 30,
-            order: [[1, 'asc']],
+            order: [[4, 'desc']],
             columnDefs: [
-                { orderable: false, targets: [0, 4] }
+                { orderable: false, targets: [0, 5] }
             ]
         });
     @endif
@@ -341,13 +346,13 @@ jQuery(function(){
             var $tr = jQuery(this.node());
             var cols = [];
             $tr.find('td').each(function(i){
-                if(i === 0 || i === 4) return; // skip image & actions
+                if(i === 0 || i === 5) return; // skip image & actions
                 cols.push('"' + jQuery(this).text().trim().replace(/"/g, '""') + '"');
             });
             if(cols.length) rows.push(cols.join(','));
         });
         if(!rows.length) return;
-        var csv = 'Name,Phone,Group\n' + rows.join('\n');
+        var csv = 'Name,Phone,Group,Added\n' + rows.join('\n');
         var blob = new Blob([csv], {type:'text/csv'});
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
@@ -366,7 +371,7 @@ jQuery(function(){
             name: $btn.data('name'),
             $btn: $btn
         };
-        jQuery('#deleteConfirmMsg').text('Delete staff "'+$btn.data('name')+'"? This action cannot be undone.');
+        jQuery('#deleteConfirmMsg').text('Move "'+$btn.data('name')+'" to trash?');
         jQuery('#deleteConfirmPassword').val('');
         jQuery('#deleteConfirmError').hide().text('');
         jQuery('#deleteConfirmSubmit').prop('disabled', false);

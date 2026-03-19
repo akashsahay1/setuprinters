@@ -17,6 +17,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('reporting', [PageController::class, 'reporting'])->name('reporting');
     Route::get('staffs', [PageController::class, 'staffs'])->name('staffs');
     Route::get('staffs/create', [PageController::class, 'staffCreate'])->name('staffs.create');
+    Route::get('staffs/trash', [PageController::class, 'staffTrash'])->name('staffs.trash');
     Route::get('staffs/{id}/edit', [PageController::class, 'staffEdit'])->name('staff.edit');
     Route::get('payroll-report', [PageController::class, 'payrollReport'])->name('payrollReport');
     Route::get('leave-management', [PageController::class, 'leaveManagement'])->name('leaveManagement');
