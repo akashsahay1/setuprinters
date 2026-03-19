@@ -1,0 +1,28 @@
+{
+  "buildFiles": [
+    "/Users/sachin/Downloads/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/sachin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/sachin/Documents/SSH_APPS/setuPrinters-main/android/app/.cxx/Debug/6d2z2hj6/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/sachin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/sachin/Documents/SSH_APPS/setuPrinters-main/android/app/.cxx/Debug/6d2z2hj6/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {},
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "/Users/sachin/Library/Android/sdk/ndk/26.3.11579264/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang.lld",
+      "cppCompilerExecutable": "/Users/sachin/Library/Android/sdk/ndk/26.3.11579264/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++.lld"
+    }
+  },
+  "cFileExtensions": [],
+  "cppFileExtensions": []
+}

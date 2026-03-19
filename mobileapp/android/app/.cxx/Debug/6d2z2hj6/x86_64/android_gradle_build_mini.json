@@ -1,0 +1,20 @@
+{
+  "buildFiles": [
+    "/Users/sachin/Downloads/flutter/packages/flutter_tools/gradle/src/main/groovy/CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/sachin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/sachin/Documents/SSH_APPS/setuPrinters-main/android/app/.cxx/Debug/6d2z2hj6/x86_64",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/sachin/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/sachin/Documents/SSH_APPS/setuPrinters-main/android/app/.cxx/Debug/6d2z2hj6/x86_64",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {}
+}
